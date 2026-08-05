@@ -1,6 +1,6 @@
 # 三照系统
 
-施工影像台账：现场用手机拍 **施工前 / 施工过程中 / 施工后** 三张照片，关联项目名称、施工位置（桩号）、施工内容、施工日期，上传后网页端随时汇总查看。
+施工影像台账：现场用手机拍 **施工前 / 施工过程中 / 施工后** 三张照片，关联项目名称、施工位置（桩号）、施工内容、施工日期，上传后网页端随时汇总查看。每条台账还可内嵌 **高速公路作业区布置图**（RoadZone Control 引擎），生成 SVG 布置图并导出 A4 图纸，形成"布置方案 → 现场照片"完整任务档案。
 
 ## 架构
 
@@ -18,7 +18,8 @@
 
 ```
 web/
-  src/          前端页面（列表汇总 / 新建记录 / 三照详情）
+  src/          前端页面（列表汇总 / 新建记录 / 三照详情 / 作业区布置编辑）
+  src/zone/     作业区布置引擎（RoadZone Control 迁移：分区计算、SVG 绘制、A4 导出）
   functions/    API（Hono，同域名部署）
   wrangler.toml Pages 配置（D1 + R2 绑定）
   schema.sql    数据库表结构
@@ -60,6 +61,13 @@ npm run deploy                                         # 构建 + 部署
 npm run deploy
 ```
 
+数据库结构变更时（如新增列），对已部署库执行迁移：
+
+```bash
+npx wrangler d1 execute three-photos-db --remote --file=schema.sql   # 建新表/索引
+npx wrangler d1 execute three-photos-db --remote --command="ALTER TABLE ..."  # 加列
+```
+
 ## 线上访问
 
 - 生产地址：**https://three.halunhaku.top**（Cloudflare Pages + 自定义域名）
@@ -87,22 +95,30 @@ git add -A && git commit -m "..." && git push
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/records` | 新建台账（项目/位置/内容/日期） |
+| POST | `/api/records` | 新建台账（项目/位置/内容/日期，可选 zone_params） |
 | GET | `/api/records?project=&highway=&section=&stake=&direction=&content=&from=&to=` | 列表（多维筛选） |
 | GET | `/api/records/:id` | 详情 |
 | DELETE | `/api/records/:id` | 删除（连带照片） |
+| PUT | `/api/records/:id/zone` | 保存/清除作业区布置参数（body：`{"zone": Params \| null}`） |
 | POST | `/api/records/:id/photos` | 上传照片（multipart：`phase`=before/during/after + `file`，每阶段不限张数） |
 | GET | `/api/photos/:photoId` | 读取照片 |
 | DELETE | `/api/photos/:photoId` | 删除单张照片 |
 
 ## 数据模型
 
-- **records**：一条施工台账 = 项目名称 + 施工位置（高速公路 → 路段 → 桩号 → 方向 上行/下行）+ 施工内容 + 施工日期
+- **records**：一条施工台账 = 项目名称 + 施工位置（高速公路 → 路段 → 桩号 → 方向 上行/下行）+ 施工内容 + 施工日期 + `zone_params`（作业区布置参数 JSON，来自 RoadZone Control，NULL = 未设置）
 - **photos**：每台账三个阶段（before / during / after），**每阶段不限张数**，前端选好照片后点"统一上传"按钮批量提交，也可单张删除
+
+## 作业区布置图（与 RoadZone Control 打通）
+
+- 详情页可为台账设置/编辑作业区布置：起点桩号、长度、方向、施工位置、各分区长度、锥桶间距、设计速度
+- 实时预览 SVG 布置图（分区色块、锥桶、标志牌、桩号标注），自动整百米联合对齐
+- 导出 A4 横向图纸（PNG / JPG / PDF 300dpi），附各区域起止点与标志牌位置明细表
+- 互通：RoadZone Control 点"复制布置参数"，在本系统布置编辑页"粘贴参数"即可带入（JSON）
+- 引擎源码位于 `web/src/zone/`（从 RoadZone Control 迁移，去掉了入场动画依赖）
 
 ## 后续规划
 
-- 与 RoadZone Control（高速公路作业区布置系统）打通，按项目名称 + 桩号关联
 - 访问控制（简单口令 / 登录）
 - 照片 GPS、时间水印
 - 微信小程序端（届时需域名备案）
