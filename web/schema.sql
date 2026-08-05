@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS records (
   direction    TEXT NOT NULL DEFAULT '',  -- 方向：'' / up(上行) / down(下行)
   content      TEXT NOT NULL DEFAULT '',  -- 施工内容
   work_date    TEXT NOT NULL,             -- 施工日期 YYYY-MM-DD
+  zone_params  TEXT,                      -- 作业区布置参数（JSON：RoadZone Params），NULL = 未设置
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -25,3 +26,6 @@ CREATE TABLE IF NOT EXISTS photos (
 CREATE INDEX IF NOT EXISTS idx_records_work_date ON records(work_date);
 CREATE INDEX IF NOT EXISTS idx_records_highway ON records(highway);
 CREATE INDEX IF NOT EXISTS idx_photos_record ON photos(record_id);
+
+-- 已部署库的迁移（zone_params 列）：
+--   npx wrangler d1 execute three-photos-db --remote --command="ALTER TABLE records ADD COLUMN zone_params TEXT"

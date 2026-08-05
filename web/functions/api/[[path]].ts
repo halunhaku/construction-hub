@@ -26,6 +26,7 @@ interface RecordRow {
   direction: string
   content: string
   work_date: string
+  zone_params: string | null
   created_at: string
   photo_id: string | null
   phase: Phase | null
@@ -55,6 +56,7 @@ function toRecord(rows: RecordRow[]) {
     direction: first.direction,
     content: first.content,
     work_date: first.work_date,
+    zone_params: first.zone_params,
     created_at: first.created_at,
     photos,
   }
@@ -62,7 +64,7 @@ function toRecord(rows: RecordRow[]) {
 
 const RECORD_SELECT = `
   SELECT r.id, r.project_name, r.highway, r.section, r.stake, r.direction,
-         r.content, r.work_date, r.created_at,
+         r.content, r.work_date, r.zone_params, r.created_at,
          p.id AS photo_id, p.phase, p.file_key, p.taken_at
   FROM records r
   LEFT JOIN photos p ON p.record_id = r.id
@@ -103,6 +105,7 @@ app.post('/records', async (c) => {
   const direction = String(body.direction ?? '').trim()
   const content = String(body.content ?? '').trim()
   const work_date = String(body.work_date ?? '').trim()
+  const zone_params = body.zone_params == null ? null : String(body.zone_params)
   if (!project_name || !highway || !section || !stake || !work_date) {
     return c.json({ error: '项目名称、高速公路、路段、桩号、施工日期为必填项' }, 400)
   }
@@ -114,12 +117,51 @@ app.post('/records', async (c) => {
   }
   const id = crypto.randomUUID()
   await c.env.DB.prepare(
-    `INSERT INTO records (id, project_name, highway, section, stake, direction, content, work_date)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO records (id, project_name, highway, section, stake, direction, content, work_date, zone_params)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(id, project_name, highway, section, stake, direction, content, work_date)
+    .bind(id, project_name, highway, section, stake, direction, content, work_date, zone_params)
     .run()
   return c.json({ id }, 201)
+})
+
+// 保存 / 清除作业区布置参数（zone 为 Params 对象或 null）
+app.put('/records/:id/zone', async (c) => {
+  const id = c.req.param('id')
+  const record = await c.env.DB.prepare('SELECT id FROM records WHERE id = ?').bind(id).first()
+  if (!record) return c.json({ error: '记录不存在' }, 404)
+
+  const body = await c.req.json().catch(() => null)
+  if (!body || !('zone' in body)) return c.json({ error: '请求体需包含 zone 字段' }, 400)
+
+  let zone_params: string | null = null
+  if (body.zone != null) {
+    const z = body.zone as Record<string, unknown>
+    if (typeof z !== 'object' || Array.isArray(z)) {
+      return c.json({ error: 'zone 必须是对象或 null' }, 400)
+    }
+    const required: [string, string][] = [
+      ['start', 'string'], ['work', 'number'], ['direction', 'string'],
+      ['workSide', 'string'], ['warning', 'number'], ['taper', 'number'],
+      ['buffer', 'number'], ['downstream', 'number'], ['terminal', 'number'],
+      ['speed', 'number'], ['coneGap', 'number'],
+    ]
+    for (const [key, type] of required) {
+      if (typeof z[key] !== type) return c.json({ error: `zone.${key} 必须是 ${type}` }, 400)
+    }
+    if (z.direction !== 'up' && z.direction !== 'down') {
+      return c.json({ error: 'zone.direction 必须是 up / down' }, 400)
+    }
+    if (z.workSide !== 'roadside' && z.workSide !== 'median') {
+      return c.json({ error: 'zone.workSide 必须是 roadside / median' }, 400)
+    }
+    zone_params = JSON.stringify(z)
+  }
+
+  await c.env.DB.prepare('UPDATE records SET zone_params = ?, updated_at = datetime(\'now\') WHERE id = ?')
+    .bind(zone_params, id)
+    .run()
+  return c.json({ ok: true, zone_params })
 })
 
 // 列表（支持按项目/高速/路段/桩号/方向/施工内容/日期范围筛选），带每张照片状态

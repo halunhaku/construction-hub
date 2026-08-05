@@ -1,3 +1,7 @@
+import type { Params as ZoneParams } from './zone/types'
+
+export type { ZoneParams }
+
 export type Phase = 'before' | 'during' | 'after'
 
 export const PHASES: { key: Phase; label: string; hint: string }[] = [
@@ -21,6 +25,7 @@ export interface RecordItem {
   direction: string // '' | 'up' | 'down'
   content: string
   work_date: string
+  zone_params: string | null // JSON.stringify(ZoneParams)，null = 未设置
   created_at: string
   photos: Record<Phase, Photo[]>
 }

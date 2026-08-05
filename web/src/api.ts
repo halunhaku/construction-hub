@@ -1,4 +1,4 @@
-import type { Phase, RecordForm, RecordItem } from './types'
+import type { Phase, RecordForm, RecordItem, ZoneParams } from './types'
 
 const BASE = '/api'
 
@@ -63,6 +63,21 @@ export function createRecord(data: RecordForm): Promise<{ id: string }> {
 
 export function deleteRecord(id: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** 保存（zone 非 null）或清除（zone 为 null）记录的作业区布置参数 */
+export function saveZone(
+  id: string,
+  zone: ZoneParams | null,
+): Promise<{ ok: boolean; zone_params: string | null }> {
+  return request<{ ok: boolean; zone_params: string | null }>(
+    `/records/${encodeURIComponent(id)}/zone`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zone }),
+    },
+  )
 }
 
 export async function uploadPhoto(

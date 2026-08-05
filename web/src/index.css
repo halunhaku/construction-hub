@@ -730,3 +730,241 @@ select:focus {
     display: none;
   }
 }
+
+/* ---------- 作业区布置（RoadZone 引擎内嵌） ---------- */
+.zone-card {
+  padding: 16px;
+}
+
+.zone-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.zone-head h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.zone-meta {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.zone-head-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.zone-export {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.zone-export .btn {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 15px;
+  text-align: center;
+}
+
+.zone-table {
+  margin-top: 16px;
+}
+
+.zone-table h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.zone-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.zone-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 8px 6px;
+  border-bottom: 0.5px solid var(--separator);
+  white-space: nowrap;
+}
+
+.zone-table td {
+  padding: 8px 6px;
+  border-bottom: 0.5px solid var(--separator);
+  vertical-align: middle;
+}
+
+.zone-table tr:last-child td {
+  border-bottom: none;
+}
+
+.zone-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.zone-name i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* 布置图绘制区（工程绘图纸底） */
+.diagramScroll {
+  margin: 12px 0 0;
+  overflow: auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  background-image:
+    linear-gradient(rgba(120, 120, 128, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 120, 128, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(120, 120, 128, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 120, 128, 0.06) 1px, transparent 1px);
+  background-size: 8px 8px, 8px 8px, 40px 40px, 40px 40px;
+}
+
+.roadSvg {
+  height: 430px;
+  display: block;
+}
+
+.zone-entry {
+  padding: 16px;
+  text-align: center;
+}
+
+.zone-entry h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.zone-entry-hint {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.zone-preview {
+  padding: 16px;
+}
+
+.zone-preview h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+/* 编辑页表单扩展 */
+.field-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: -8px 0 12px;
+}
+
+.field-block {
+  margin-bottom: 16px;
+}
+
+.field-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.seg {
+  display: flex;
+  gap: 8px;
+}
+
+.seg button {
+  flex: 1;
+  padding: 12px 0;
+  border: none;
+  border-radius: var(--radius-input);
+  background: var(--fill);
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.seg button.active {
+  background: var(--tint);
+  color: #fff;
+  font-weight: 600;
+}
+
+.advanced {
+  margin-bottom: 16px;
+  border: none;
+}
+
+.advanced summary {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+
+.advanced-body {
+  margin-top: 12px;
+}
+
+.advanced-body label {
+  margin-bottom: 12px;
+}
+
+.paste-zone {
+  margin-bottom: 16px;
+}
+
+.paste-zone textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-input);
+  background: var(--fill);
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+  resize: vertical;
+  margin-bottom: 8px;
+}
+
+.paste-zone textarea:focus {
+  outline: none;
+  background: var(--fill-pressed);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22);
+}
+
+.paste-msg {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 8px 0 0;
+}
+

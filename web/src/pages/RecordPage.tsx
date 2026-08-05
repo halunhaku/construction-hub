@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { deletePhoto, deleteRecord, getRecord, photoUrl, uploadPhoto } from '../api'
+import { deletePhoto, deleteRecord, getRecord, photoUrl, saveZone, uploadPhoto } from '../api'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
+import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
+import { parseZoneParams } from '../zone/utils'
 import { directionLabel, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { uid } from '../util'
 
@@ -16,6 +18,11 @@ export default function RecordPage({ id }: { id: string }) {
   const [downloading, setDownloading] = useState(false)
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<number | null>(null)
+
+  const zoneParams = useMemo(
+    () => (record?.zone_params ? parseZoneParams(record.zone_params) : null),
+    [record],
+  )
 
   function showFlash(msg: string) {
     setFlash(msg)
@@ -172,6 +179,17 @@ export default function RecordPage({ id }: { id: string }) {
     }
   }
 
+  async function clearZone() {
+    if (!window.confirm('确定清除这条记录的作业区布置图吗？')) return
+    try {
+      await saveZone(id, null)
+      await load()
+      showFlash('已清除作业区布置图')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '清除失败')
+    }
+  }
+
   if (error && !record) return <div className="page notice error">{error}</div>
 
   return (
@@ -219,6 +237,27 @@ export default function RecordPage({ id }: { id: string }) {
               <span className="info-value">{record.work_date}</span>
             </div>
           </div>
+
+          {zoneParams ? (
+            <ZoneCard
+              params={zoneParams}
+              onEdit={() => (window.location.hash = `#/record/${id}/zone`)}
+              onClear={clearZone}
+            />
+          ) : (
+            <div className="card zone-entry">
+              <h2>作业区布置图</h2>
+              <p className="zone-entry-hint">
+                尚未设置。可为这条施工记录生成并保存作业区布置图（含各分区桩号与标志牌位置），并导出 A4 图纸。
+              </p>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={() => (window.location.hash = `#/record/${id}/zone`)}
+              >
+                ＋ 设置作业区布置
+              </button>
+            </div>
+          )}
 
           {error && <div className="notice error">{error}</div>}
           {flash && <div className="flash">{flash}</div>}
