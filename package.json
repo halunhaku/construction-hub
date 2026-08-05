@@ -1,0 +1,13 @@
+{
+  "name": "three-photos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "三照系统 - 施工前/施工中/施工后照片台账（H5 + Cloudflare Pages）",
+  "scripts": {
+    "dev:web": "npm --prefix web run dev",
+    "dev:api": "npm --prefix web run dev:api",
+    "build": "npm --prefix web run build",
+    "deploy": "npm --prefix web run deploy",
+    "db:init": "npm --prefix web run db:init"
+  }
+}

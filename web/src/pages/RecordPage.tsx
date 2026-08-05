@@ -1,0 +1,201 @@
+import { useEffect, useRef, useState } from 'react'
+import { deletePhoto, deleteRecord, getRecord, uploadPhoto } from '../api'
+import PhaseCard, { type PendingItem } from '../components/PhaseCard'
+import { compressImage } from '../image'
+import { directionLabel, PHASES, type Phase, type RecordItem } from '../types'
+import { uid } from '../util'
+
+export default function RecordPage({ id }: { id: string }) {
+  const [record, setRecord] = useState<RecordItem | null>(null)
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState<PendingItem[]>([])
+  const [uploadingPhase, setUploadingPhase] = useState<Phase | null>(null)
+  const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const [flash, setFlash] = useState('')
+  const flashTimer = useRef<number | null>(null)
+
+  function showFlash(msg: string) {
+    setFlash(msg)
+    if (flashTimer.current) window.clearTimeout(flashTimer.current)
+    flashTimer.current = window.setTimeout(() => setFlash(''), 4000)
+  }
+
+  const addPendingRef = useRef(addPending)
+  addPendingRef.current = addPending
+
+  // 文件选择统一在这里用 document 级捕获监听处理：
+  // 捕获阶段在事件到达目标之前，即使 React 重建了组件内部的 input DOM，
+  // document 级监听也一定能收到 change 事件。
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const el = ev.target
+      if (!(el instanceof HTMLInputElement) || el.type !== 'file') return
+      const phase = el.dataset.phase as Phase | undefined
+      // FileList 在部分移动浏览器中是实时对象；必须先复制，再清空 input。
+      const files = Array.from(el.files ?? [])
+      el.value = ''
+      if (phase && files.length) {
+        showFlash(`已选择 ${files.length} 张照片，点击下方「上传」按钮提交`)
+        addPendingRef.current(phase, files)
+      }
+    }
+    document.addEventListener('change', handler, true)
+    return () => document.removeEventListener('change', handler, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function load() {
+    try {
+      setRecord(await getRecord(id))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载失败')
+    }
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  function addPending(phase: Phase, files: File[]) {
+    try {
+      const items: PendingItem[] = files.map((f) => ({
+        id: uid(),
+        phase,
+        file: f,
+        preview: URL.createObjectURL(f),
+      }))
+      setPending((p) => [...p, ...items])
+      setError('')
+    } catch (e) {
+      setError('添加照片失败：' + (e instanceof Error ? e.message : String(e)))
+    }
+  }
+
+  function removePending(itemId: string) {
+    setPending((p) => {
+      const item = p.find((x) => x.id === itemId)
+      if (item) URL.revokeObjectURL(item.preview)
+      return p.filter((x) => x.id !== itemId)
+    })
+  }
+
+  // 按阶段上传：只上传该阶段的待传照片
+  async function uploadPhase(phase: Phase) {
+    const items = pending.filter((p) => p.phase === phase)
+    if (!record || items.length === 0 || uploadingPhase) return
+    setUploadingPhase(phase)
+    setError('')
+    const total = items.length
+    let ok = 0
+    let fail = 0
+    for (let i = 0; i < total; i++) {
+      const item = items[i]
+      try {
+        const blob = await compressImage(item.file)
+        await uploadPhoto(record.id, item.phase, blob)
+        ok++
+      } catch {
+        fail++
+      }
+      setProgress({ done: i + 1, total })
+    }
+    items.forEach((item) => URL.revokeObjectURL(item.preview))
+    setPending((p) => p.filter((x) => x.phase !== phase))
+    setUploadingPhase(null)
+    await load()
+    if (fail > 0) setError(`上传完成：成功 ${ok} 张，失败 ${fail} 张`)
+  }
+
+  async function removePhoto(photoId: string) {
+    if (!window.confirm('确定删除这张照片吗？')) return
+    try {
+      await deletePhoto(photoId)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '删除失败')
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm('确定删除这条记录吗？所有照片将一并删除。')) return
+    try {
+      await deleteRecord(id)
+      window.location.hash = '#/'
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '删除失败')
+    }
+  }
+
+  if (error && !record) return <div className="page notice error">{error}</div>
+
+  return (
+    <div className="page">
+      <header className="topbar">
+        <button className="btn" onClick={() => (window.location.hash = '#/')}>
+          ← 返回
+        </button>
+        <h1>三照详情</h1>
+        <button className="btn btn-danger" onClick={remove}>
+          删除
+        </button>
+      </header>
+
+      {record && (
+        <>
+          <div className="card record-info">
+            <div className="info-row">
+              <span className="info-label">项目名称</span>
+              <span className="info-value">{record.project_name}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">高速公路</span>
+              <span className="info-value">{record.highway}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">路段</span>
+              <span className="info-value">{record.section}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">桩号</span>
+              <span className="info-value">
+                {record.stake}
+                {record.direction && `（${directionLabel(record.direction)}）`}
+              </span>
+            </div>
+            {record.content && (
+              <div className="info-row">
+                <span className="info-label">施工内容</span>
+                <span className="info-value">{record.content}</span>
+              </div>
+            )}
+            <div className="info-row">
+              <span className="info-label">施工日期</span>
+              <span className="info-value">{record.work_date}</span>
+            </div>
+          </div>
+
+          {error && <div className="notice error">{error}</div>}
+          {flash && <div className="flash">{flash}</div>}
+
+          {PHASES.map((p) => (
+            <PhaseCard
+              key={p.key}
+              phase={p.key}
+              label={p.label}
+              hint={p.hint}
+              photos={record.photos[p.key]}
+              pending={pending}
+              uploading={uploadingPhase === p.key}
+              progress={uploadingPhase === p.key ? progress : null}
+              onUpload={() => uploadPhase(p.key)}
+              onRemovePending={removePending}
+              onRemovePhoto={removePhoto}
+            />
+          ))}
+          <p className="tip">每个阶段分别上传，每阶段不限张数。</p>
+        </>
+      )}
+    </div>
+  )
+}
