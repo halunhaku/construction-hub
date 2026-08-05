@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createRecord, getOptions } from '../api'
+import ZoneForm, { validateZone } from '../components/ZoneForm'
+import type { ZoneParams } from '../types'
 import { today } from '../util'
 
 const DIRECTIONS = [
@@ -18,6 +20,7 @@ export default function NewRecordPage() {
     content: '',
     work_date: today(),
   })
+  const [zone, setZone] = useState<ZoneParams | null>(null)
   const [options, setOptions] = useState<{
     projects: string[]
     highways: string[]
@@ -37,10 +40,19 @@ export default function NewRecordPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    // 布置图已勾选但参数无效时阻止保存，并在预览区提示
+    const zoneErrors = validateZone(zone)
+    if (Object.keys(zoneErrors).length > 0) {
+      setError('作业区布置参数有误，请修正（红色提示处）')
+      return
+    }
     setSaving(true)
     setError('')
     try {
-      const { id } = await createRecord(form)
+      const { id } = await createRecord({
+        ...form,
+        zone_params: zone ? JSON.stringify(zone) : null,
+      })
       window.location.hash = `#/record/${id}`
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败')
@@ -156,6 +168,10 @@ export default function NewRecordPage() {
             onChange={(e) => setForm({ ...form, work_date: e.target.value })}
           />
         </label>
+
+        <div className="zone-in-new">
+          <ZoneForm value={zone} onChange={setZone} />
+        </div>
 
         {error && <div className="notice error">{error}</div>}
 

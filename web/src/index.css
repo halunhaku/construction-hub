@@ -911,7 +911,7 @@ select:focus {
 }
 
 .seg button.active {
-  background: var(--tint);
+  background: var(--accent);
   color: #fff;
   font-weight: 600;
 }
@@ -966,5 +966,31 @@ select:focus {
   font-size: 13px;
   color: var(--text-secondary);
   margin: 8px 0 0;
+}
+
+/* 新建页内嵌布置图配置 */
+.zone-in-new {
+  margin: 4px 0 16px;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.zone-form-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.zone-form-toggle input {
+  width: 19px;
+  height: 19px;
+  accent-color: var(--accent);
+}
+
+.zone-preview-inline {
+  margin-top: 4px;
 }
 

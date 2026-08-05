@@ -38,6 +38,7 @@ export interface RecordForm {
   direction: string
   content: string
   work_date: string
+  zone_params: string | null // JSON.stringify(ZoneParams)，null = 不设置
 }
 
 export function directionLabel(d: string): string {
