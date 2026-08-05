@@ -1,124 +1,64 @@
-# 三照系统
+# 统一施工管理平台
 
-施工影像台账：现场用手机拍 **施工前 / 施工过程中 / 施工后** 三张照片，关联项目名称、施工位置（桩号）、施工内容、施工日期，上传后网页端随时汇总查看。每条台账还可内嵌 **高速公路作业区布置图**（RoadZone Control 引擎），生成 SVG 布置图并导出 A4 图纸，形成"布置方案 → 现场照片"完整任务档案。
+单一项目统一管理：
 
-## 架构
+- 多项目首页与项目施工位置清单
+- Excel 批量导入施工位置、桩号和计划信息
+- 施工前、施工中、施工后三阶段影像证据
+- 高速公路作业区参数计算、SVG 布置图与 A4 PNG/JPG/PDF 导出
+- Cloudflare Pages Functions、D1 数据库与 R2 照片存储
 
-```
-手机/电脑浏览器 ──> Cloudflare Pages（同一域名）
-                     ├─ 静态页面  React 19 + Vite（web/）
-                     ├─ API       Pages Functions / Hono（web/functions/）
-                     ├─ 照片      R2 对象存储（免费 10GB）
-                     └─ 台账      D1 数据库（免费 5GB）
-```
+## 目录
 
-全部使用 Cloudflare 免费额度，无需服务器、无需域名备案。
-
-## 目录结构
-
-```
-web/
-  src/          前端页面（列表汇总 / 新建记录 / 三照详情 / 作业区布置编辑）
-  src/zone/     作业区布置引擎（RoadZone Control 迁移：分区计算、SVG 绘制、A4 导出）
-  functions/    API（Hono，同域名部署）
-  wrangler.toml Pages 配置（D1 + R2 绑定）
-  schema.sql    数据库表结构
+```text
+src/             React 前端
+src/zone/        作业区计算、道路图与导出引擎
+functions/       Cloudflare Pages API
+migrations/      D1 数据库迁移
+public/          静态资源
+miniprogram/     同一平台的微信小程序客户端（保留）
+schema.sql       D1 完整表结构
+wrangler.toml    Cloudflare 配置
 ```
 
 ## 本地开发
 
 ```bash
-cd web
 npm install
-npm run build        # 首次需构建 dist 供 pages dev 使用
-npm run dev:api      # 终端 1：本地 API（localhost:8788，D1/R2 本地模拟）
-npm run dev          # 终端 2：Vite 热更新（localhost:5173，代理 /api → 8788）
+npm run build
+npm run dev:api  # API: http://localhost:8788
+npm run dev      # Web: http://localhost:5173
 ```
 
-本地首次启动前初始化数据库表：
+首次初始化本地数据库：
 
 ```bash
-cd web
 npx wrangler d1 execute three-photos-db --local --file=schema.sql
 ```
 
-## 部署（首次，一次性）
-
-需要 Cloudflare 账号：
+## 验证
 
 ```bash
-cd web
-npx wrangler login                                     # 浏览器授权登录
-npx wrangler d1 create three-photos-db                 # 建数据库，把输出的 database_id 填入 wrangler.toml
-npx wrangler r2 bucket create three-photos             # 建照片存储桶
-npm run db:init                                        # 建表
-npm run deploy                                         # 构建 + 部署
+npm run build
+npm run lint
 ```
 
-之后每次更新：
+## 部署
 
 ```bash
+npm run db:migrate:excel:remote
 npm run deploy
 ```
 
-数据库结构变更时（如新增列），对已部署库执行迁移：
-
-```bash
-npx wrangler d1 execute three-photos-db --remote --file=schema.sql   # 建新表/索引
-npx wrangler d1 execute three-photos-db --remote --command="ALTER TABLE ..."  # 加列
-```
-
-## 线上访问
-
-- 生产地址：**https://three.halunhaku.top**（Cloudflare Pages + 自定义域名）
-- Pages 默认域名：https://three-photos.pages.dev（作为回退）
-
-## 自动部署（Cloudflare Pages Git 集成）
-
-仓库 `halunhaku/three-photos` 已在 Cloudflare Pages 后台连接，**push 到 `main` 分支自动构建并部署**：
-
-```bash
-git add -A && git commit -m "..." && git push
-```
-
-构建配置（Cloudflare 后台 → three-photos → Settings → Builds & deployments）：
+Cloudflare Pages Git 集成应使用仓库根目录：
 
 | 配置项 | 值 |
 |---|---|
-| Production branch | `main` |
-| 根目录 Root directory | `web` |
-| 安装命令 Install command | `npm ci` |
-| 构建命令 Build command | `npm run build` |
-| 构建输出目录 Build output directory | `dist` |
+| Root directory | `/` |
+| Install command | `npm ci` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
 
-## API
+现有生产域名：`https://project.halunhaku.top`
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/records` | 新建台账（项目/位置/内容/日期，可选 zone_params） |
-| GET | `/api/records?project=&highway=&section=&stake=&direction=&content=&from=&to=` | 列表（多维筛选） |
-| GET | `/api/records/:id` | 详情 |
-| DELETE | `/api/records/:id` | 删除（连带照片） |
-| PUT | `/api/records/:id/zone` | 保存/清除作业区布置参数（body：`{"zone": Params \| null}`） |
-| POST | `/api/records/:id/photos` | 上传照片（multipart：`phase`=before/during/after + `file`，每阶段不限张数） |
-| GET | `/api/photos/:photoId` | 读取照片 |
-| DELETE | `/api/photos/:photoId` | 删除单张照片 |
-
-## 数据模型
-
-- **records**：一条施工台账 = 项目名称 + 施工位置（高速公路 → 路段 → 桩号 → 方向 上行/下行）+ 施工内容 + 施工日期 + `zone_params`（作业区布置参数 JSON，来自 RoadZone Control，NULL = 未设置）
-- **photos**：每台账三个阶段（before / during / after），**每阶段不限张数**，前端选好照片后点"统一上传"按钮批量提交，也可单张删除
-
-## 作业区布置图（与 RoadZone Control 打通）
-
-- 详情页可为台账设置/编辑作业区布置：起点桩号、长度、方向、施工位置、各分区长度、锥桶间距、设计速度
-- 实时预览 SVG 布置图（分区色块、锥桶、标志牌、桩号标注），自动整百米联合对齐
-- 导出 A4 横向图纸（PNG / JPG / PDF 300dpi），附各区域起止点与标志牌位置明细表
-- 互通：RoadZone Control 点"复制布置参数"，在本系统布置编辑页"粘贴参数"即可带入（JSON）
-- 引擎源码位于 `web/src/zone/`（从 RoadZone Control 迁移，去掉了入场动画依赖）
-
-## 后续规划
-
-- 访问控制（简单口令 / 登录）
-- 照片 GPS、时间水印
-- 微信小程序端（届时需域名备案）
+正式实施作业区布置前，请按道路等级、设计速度、施工类型和当地现行规范复核。

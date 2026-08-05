@@ -1,0 +1,2 @@
+ALTER TABLE records ADD COLUMN work_location TEXT NOT NULL DEFAULT '';
+ALTER TABLE records ADD COLUMN end_stake TEXT NOT NULL DEFAULT '';
