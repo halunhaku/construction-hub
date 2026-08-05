@@ -46,3 +46,47 @@ function loadViaImg(file: File): Promise<HTMLImageElement> {
     img.src = url
   })
 }
+
+/**
+ * 给照片加左下角水印（半透明黑底白字），返回 JPEG Blob。
+ * lines：每行文字（项目/位置/日期/阶段等）
+ */
+export async function watermarkImage(url: string, lines: string[]): Promise<Blob> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image()
+    el.crossOrigin = 'anonymous'
+    el.onload = () => resolve(el)
+    el.onerror = () => reject(new Error('照片加载失败'))
+    el.src = url
+  })
+
+  const canvas = document.createElement('canvas')
+  canvas.width = img.naturalWidth
+  canvas.height = img.naturalHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('浏览器不支持 Canvas')
+
+  ctx.drawImage(img, 0, 0)
+
+  const fs = Math.max(24, Math.round(canvas.width / 45))
+  const pad = fs * 0.7
+  const lineH = fs * 1.4
+  ctx.font = `600 ${fs}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`
+  const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width))
+  const boxW = maxW + pad * 2
+  const boxH = lines.length * lineH + pad * 2
+  const x = pad
+  const y = canvas.height - boxH - pad
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'
+  ctx.beginPath()
+  ctx.roundRect(x, y, boxW, boxH, fs * 0.4)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  ctx.textBaseline = 'middle'
+  lines.forEach((l, i) => ctx.fillText(l, x + pad, y + pad + lineH * (i + 0.5)))
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('水印生成失败'))), 'image/jpeg', 0.92)
+  })
+}

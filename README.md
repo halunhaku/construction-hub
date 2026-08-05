@@ -88,7 +88,7 @@ git add -A && git commit -m "..." && git push
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/api/records` | 新建台账（项目/位置/内容/日期） |
-| GET | `/api/records?project=&location=&from=&to=` | 列表/筛选 |
+| GET | `/api/records?project=&highway=&section=&stake=&direction=&content=&from=&to=` | 列表（多维筛选） |
 | GET | `/api/records/:id` | 详情 |
 | DELETE | `/api/records/:id` | 删除（连带照片） |
 | POST | `/api/records/:id/photos` | 上传照片（multipart：`phase`=before/during/after + `file`，每阶段不限张数） |

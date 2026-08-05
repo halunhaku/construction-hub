@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import JSZip from 'jszip'
 import { deletePhoto, deleteRecord, getRecord, photoUrl, uploadPhoto } from '../api'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
-import { compressImage } from '../image'
+import { compressImage, watermarkImage } from '../image'
 import { directionLabel, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { uid } from '../util'
 
@@ -12,6 +13,7 @@ export default function RecordPage({ id }: { id: string }) {
   const [uploadingPhase, setUploadingPhase] = useState<Phase | null>(null)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const [viewer, setViewer] = useState<Photo | null>(null)
+  const [downloading, setDownloading] = useState(false)
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<number | null>(null)
 
@@ -118,6 +120,48 @@ export default function RecordPage({ id }: { id: string }) {
     }
   }
 
+  // 打包下载全部照片（带水印）
+  async function downloadAll() {
+    if (!record || downloading) return
+    const all = PHASES.flatMap((p) =>
+      record.photos[p.key].map((ph) => ({ phase: p.key, photo: ph })),
+    )
+    if (all.length === 0) {
+      showFlash('暂无照片可下载')
+      return
+    }
+    setDownloading(true)
+    setError('')
+    try {
+      const zip = new JSZip()
+      const base = [
+        record.project_name,
+        `${record.highway} ${record.section} ${record.stake}${record.direction ? `（${directionLabel(record.direction)}）` : ''}`,
+        `施工日期：${record.work_date}`,
+      ]
+      for (const { phase, photo } of all) {
+        const phaseLabel = PHASES.find((p) => p.key === phase)?.label ?? phase
+        const blob = await watermarkImage(photoUrl(photo.id), [
+          ...base,
+          `阶段：${phaseLabel}`,
+          `拍摄：${photo.taken_at}`,
+        ])
+        zip.file(`${phaseLabel}/${photo.id}.jpg`, blob)
+      }
+      const content = await zip.generateAsync({ type: 'blob' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(content)
+      a.download = `${record.highway}_${record.stake}_三照照片.zip`
+      a.click()
+      URL.revokeObjectURL(a.href)
+      showFlash(`已打包下载 ${all.length} 张照片（带水印）`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '打包下载失败')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   async function remove() {
     if (!window.confirm('确定删除这条记录吗？所有照片将一并删除。')) return
     try {
@@ -178,6 +222,16 @@ export default function RecordPage({ id }: { id: string }) {
 
           {error && <div className="notice error">{error}</div>}
           {flash && <div className="flash">{flash}</div>}
+
+          <div className="card record-actions">
+            <button
+              className="btn btn-primary btn-block"
+              onClick={downloadAll}
+              disabled={downloading}
+            >
+              {downloading ? '⏳ 打包下载中…' : '⬇ 下载全部照片（带水印）'}
+            </button>
+          </div>
 
           {PHASES.map((p) => (
             <PhaseCard

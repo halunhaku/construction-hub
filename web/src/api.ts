@@ -22,8 +22,11 @@ export interface ListQuery {
   highway?: string
   section?: string
   stake?: string
+  direction?: string
+  content?: string
   from?: string
   to?: string
+  photo?: string // all | complete | incomplete（前端过滤）
 }
 
 export function listRecords(q: ListQuery = {}): Promise<RecordItem[]> {

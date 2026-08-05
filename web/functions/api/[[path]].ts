@@ -122,12 +122,14 @@ app.post('/records', async (c) => {
   return c.json({ id }, 201)
 })
 
-// 列表（支持按项目/高速/路段/桩号/日期范围筛选），带每张照片状态
+// 列表（支持按项目/高速/路段/桩号/方向/施工内容/日期范围筛选），带每张照片状态
 app.get('/records', async (c) => {
   const project = c.req.query('project') ?? ''
   const highway = c.req.query('highway') ?? ''
   const section = c.req.query('section') ?? ''
   const stake = c.req.query('stake') ?? ''
+  const direction = c.req.query('direction') ?? ''
+  const content = c.req.query('content') ?? ''
   const from = c.req.query('from') ?? ''
   const to = c.req.query('to') ?? ''
   const { results } = await c.env.DB.prepare(
@@ -136,11 +138,13 @@ app.get('/records', async (c) => {
        AND (?2 = '' OR instr(r.highway, ?2) > 0)
        AND (?3 = '' OR instr(r.section, ?3) > 0)
        AND (?4 = '' OR instr(r.stake, ?4) > 0)
-       AND (?5 = '' OR r.work_date >= ?5)
-       AND (?6 = '' OR r.work_date <= ?6)
+       AND (?5 = '' OR r.direction = ?5)
+       AND (?6 = '' OR instr(r.content, ?6) > 0)
+       AND (?7 = '' OR r.work_date >= ?7)
+       AND (?8 = '' OR r.work_date <= ?8)
      ORDER BY r.work_date DESC, r.created_at DESC`,
   )
-    .bind(project, highway, section, stake, from, to)
+    .bind(project, highway, section, stake, direction, content, from, to)
     .all<RecordRow>()
 
   const map = new Map<string, RecordRow[]>()
