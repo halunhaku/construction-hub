@@ -20,6 +20,7 @@ interface Props {
   onUpload: () => void
   onRemovePending: (id: string) => void
   onRemovePhoto: (photoId: string) => void
+  onViewPhoto: (photo: Photo) => void
 }
 
 export default function PhaseCard({
@@ -33,6 +34,7 @@ export default function PhaseCard({
   onUpload,
   onRemovePending,
   onRemovePhoto,
+  onViewPhoto,
 }: Props) {
   const myPending = pending.filter((p) => p.phase === phase)
 
@@ -46,7 +48,12 @@ export default function PhaseCard({
       <div className="phase-photos">
         {photos.map((p) => (
           <div className="thumb" key={p.id}>
-            <img src={photoUrl(p.id)} alt={label} loading="lazy" />
+            <img
+              src={photoUrl(p.id)}
+              alt={label}
+              loading="lazy"
+              onClick={() => onViewPhoto(p)}
+            />
             <button
               className="thumb-del"
               title="删除这张照片"

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { deletePhoto, deleteRecord, getRecord, uploadPhoto } from '../api'
+import { deletePhoto, deleteRecord, getRecord, photoUrl, uploadPhoto } from '../api'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import { compressImage } from '../image'
-import { directionLabel, PHASES, type Phase, type RecordItem } from '../types'
+import { directionLabel, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { uid } from '../util'
 
 export default function RecordPage({ id }: { id: string }) {
@@ -11,6 +11,7 @@ export default function RecordPage({ id }: { id: string }) {
   const [pending, setPending] = useState<PendingItem[]>([])
   const [uploadingPhase, setUploadingPhase] = useState<Phase | null>(null)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const [viewer, setViewer] = useState<Photo | null>(null)
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<number | null>(null)
 
@@ -191,10 +192,18 @@ export default function RecordPage({ id }: { id: string }) {
               onUpload={() => uploadPhase(p.key)}
               onRemovePending={removePending}
               onRemovePhoto={removePhoto}
+              onViewPhoto={setViewer}
             />
           ))}
           <p className="tip">每个阶段分别上传，每阶段不限张数。</p>
         </>
+      )}
+
+      {viewer && (
+        <div className="photo-viewer" onClick={() => setViewer(null)}>
+          <img src={photoUrl(viewer.id)} alt="照片预览" />
+          <span className="photo-viewer-close">点击任意处关闭</span>
+        </div>
       )}
     </div>
   )

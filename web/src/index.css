@@ -563,6 +563,43 @@ select:focus {
   margin-top: 14px;
 }
 
+/* ---------- 全屏照片查看器 ---------- */
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  animation: viewer-in 0.18s ease;
+}
+
+.photo-viewer img {
+  max-width: 100%;
+  max-height: 82vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.photo-viewer-close {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+}
+
+@keyframes viewer-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* ---------- 提示 ---------- */
 .notice {
   padding: 14px 16px;
