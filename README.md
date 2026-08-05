@@ -65,22 +65,23 @@ npm run deploy
 - 生产地址：**https://three.halunhaku.top**（Cloudflare Pages + 自定义域名）
 - Pages 默认域名：https://three-photos.pages.dev（作为回退）
 
-## 自动部署（GitHub Actions）
+## 自动部署（Cloudflare Pages Git 集成）
 
-仓库 `halunhaku/three-photos`，push 到 `main` 分支自动构建并部署到 Cloudflare Pages：
+仓库 `halunhaku/three-photos` 已在 Cloudflare Pages 后台连接，**push 到 `main` 分支自动构建并部署**：
 
 ```bash
 git add -A && git commit -m "..." && git push
 ```
 
-Workflow 文件：`.github/workflows/deploy.yml`，需要两个仓库 Secrets：
+构建配置（Cloudflare 后台 → three-photos → Settings → Builds & deployments）：
 
-| Secret | 值 |
+| 配置项 | 值 |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API Token（权限：Account → Cloudflare Pages → Edit） |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户 ID |
-
-也可以手动触发：仓库 Actions → Deploy to Cloudflare Pages → Run workflow。
+| Production branch | `main` |
+| 根目录 Root directory | `web` |
+| 安装命令 Install command | `npm ci` |
+| 构建命令 Build command | `npm run build` |
+| 构建输出目录 Build output directory | `dist` |
 
 ## API
 
