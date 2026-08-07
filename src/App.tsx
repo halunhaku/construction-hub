@@ -19,7 +19,7 @@ export default function App() {
   const hash = useHashRoute()
   const [path, id, sub] = hash.replace(/^#\/?/, '').split('/')
 
-  if (path === 'new') return <NewRecordPage />
+  if (path === 'new') return <NewRecordPage key={id ?? ''} project={id ? decodeURIComponent(id) : undefined} />
   if (path === 'project' && id) return <ListPage project={decodeURIComponent(id)} />
   if (path === 'record' && id && sub === 'zone') {
     return <ZoneEditorPage id={decodeURIComponent(id)} />

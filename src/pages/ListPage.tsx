@@ -74,7 +74,7 @@ export default function ListPage({ project }: { project?: string }) {
                 void load(projectQuery)
               }}
             />
-            <button className="btn btn-primary" onClick={() => (window.location.hash = '#/new')}>
+            <button className="btn btn-primary" onClick={() => (window.location.hash = project ? `#/new/${encodeURIComponent(project)}` : '#/new')}>
               <Plus />
               新建记录
             </button>

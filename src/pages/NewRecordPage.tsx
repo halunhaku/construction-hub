@@ -12,9 +12,9 @@ const DIRECTIONS = [
   { value: 'down', label: '下行' },
 ]
 
-export default function NewRecordPage() {
+export default function NewRecordPage({ project }: { project?: string }) {
   const [form, setForm] = useState({
-    project_name: '',
+    project_name: project ?? '',
     highway: '',
     section: '',
     work_location: '',
