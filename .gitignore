@@ -21,3 +21,6 @@ design-qa*.png
 design-qa*.md
 implementation-*.png
 qa-assets/
+
+# 本地审核材料(不入库)
+小程序情况说明/

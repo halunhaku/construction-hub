@@ -5,7 +5,7 @@ import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { today } from '../util'
 import { validateZone } from '../zone/validation'
-import { defaults, parseStake } from '../zone/utils'
+import { defaults, parseStake, stake } from '../zone/utils'
 
 const DIRECTIONS = [
   { value: '', label: '不指定' },
@@ -44,22 +44,25 @@ export default function NewRecordPage({ project }: { project?: string }) {
       })
   }, [])
 
-  // 起始桩号 → 布置图起点；结束桩号 → 布置图长度（结束-起始）
+  // 起始桩号 → 布置图起点；作业区长度直接输入，结束桩号自动派生
   function handleStake(v: string) {
     setForm((f) => ({ ...f, stake: v }))
     setZone((z) => (z ? { ...z, start: v || z.start } : z))
   }
 
-  function handleEndStake(v: string) {
-    setForm((f) => ({ ...f, end_stake: v }))
-    setZone((z) => {
-      if (!z) return z
-      const s = parseStake(z.start)
-      const e = parseStake(v)
-      if (s != null && e != null && e > s) return { ...z, work: e - s }
-      return z
-    })
+  function handleWork(v: number) {
+    setZone((z) => (z ? { ...z, work: v } : z))
   }
+
+  // 结束桩号 = 起始桩号 + 作业区长度（自动计算，无需手输）
+  useEffect(() => {
+    const s = parseStake(zone?.start ?? '')
+    const w = zone?.work ?? 0
+    if (s != null && w >= 10) {
+      const es = stake(s + w)
+      setForm((f) => (f.end_stake === es ? f : { ...f, end_stake: es }))
+    }
+  }, [zone?.start, zone?.work])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -155,11 +158,12 @@ export default function NewRecordPage({ project }: { project?: string }) {
             />
           </label>
           <label>
-            结束桩号
+            作业区长度（m）
             <input
-              placeholder="例如：K12+445（用于自动计算布置图长度）"
-              value={form.end_stake}
-              onChange={(e) => handleEndStake(e.target.value)}
+              type="number"
+              min={10}
+              value={zone?.work ?? 1000}
+              onChange={(e) => handleWork(Number(e.target.value))}
             />
           </label>
         </div>
