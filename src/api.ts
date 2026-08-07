@@ -59,6 +59,17 @@ export function listProjects(): Promise<ProjectSummary[]> {
   return request<ProjectSummary[]>('/projects')
 }
 
+export interface DailyStat {
+  work_date: string
+  total: number
+  complete: number
+}
+
+/** 日历聚合：某日期范围内每天的记录数与三照完整数 */
+export function fetchDaily(from: string, to: string): Promise<DailyStat[]> {
+  return request<DailyStat[]>(`/records/daily?from=${from}&to=${to}`)
+}
+
 const OPTIONS_CACHE_KEY = 'opts-cache-v1'
 const OPTIONS_TTL = 24 * 60 * 60 * 1000
 

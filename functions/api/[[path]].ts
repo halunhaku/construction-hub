@@ -225,6 +225,28 @@ app.put('/records/:id/zone', async (c) => {
   return c.json({ ok: true, zone_params })
 })
 
+// 日历聚合：按施工日期统计记录数与三照完整数（用于月历标记）
+app.get('/records/daily', async (c) => {
+  const from = c.req.query('from') ?? ''
+  const to = c.req.query('to') ?? ''
+  const { results } = await c.env.DB.prepare(
+    `SELECT r.work_date,
+            COUNT(DISTINCT r.id) AS total,
+            COUNT(DISTINCT CASE WHEN ph.cnt >= 3 THEN r.id END) AS complete
+     FROM records r
+     LEFT JOIN (
+       SELECT record_id, COUNT(DISTINCT phase) AS cnt
+       FROM photos GROUP BY record_id
+     ) ph ON ph.record_id = r.id
+     WHERE r.work_date BETWEEN ?1 AND ?2
+     GROUP BY r.work_date
+     ORDER BY r.work_date`,
+  )
+    .bind(from, to)
+    .all<{ work_date: string; total: number; complete: number }>()
+  return c.json(results)
+})
+
 // 列表（支持按项目/高速/路段/桩号/方向/施工内容/日期范围筛选），带每张照片状态
 app.get('/records', async (c) => {
   const project = c.req.query('project') ?? ''

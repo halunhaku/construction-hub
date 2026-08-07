@@ -291,6 +291,39 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .form-section-title { margin: 0 2px 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
 .form-section-title + .card { margin-bottom: 24px; }
 .form-card { padding: 18px 20px 6px; }
+.calendar-card { max-width: 640px; margin: 0 auto 24px; padding: 18px 20px; }
+.calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.calendar-head h2 { margin: 0; font-size: 17px; }
+.calendar-nav { width: 30px; height: 30px; border: 1px solid var(--line); background: #fff; }
+.calendar-nav svg { width: 16px; height: 16px; }
+.calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; }
+.calendar-weekdays span { padding: 4px 0; color: var(--muted); font-size: 11px; font-weight: 600; text-align: center; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calendar-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 44px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font-size: 13px; cursor: pointer; }
+.calendar-cell:hover { background: #f2f6fb; }
+.calendar-cell.empty { cursor: default; }
+.calendar-cell.today .calendar-day { box-shadow: inset 0 0 0 1.5px var(--blue-600); border-radius: 50%; }
+.calendar-cell.selected { background: var(--blue-600); color: #fff; font-weight: 700; }
+.calendar-cell.selected .calendar-day { box-shadow: none; }
+.calendar-day { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; }
+.calendar-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--blue-600); }
+.calendar-dot.done { background: #22a06b; }
+.calendar-cell.selected .calendar-dot { background: #fff; }
+.calendar-legend { display: flex; gap: 16px; margin-top: 12px; color: var(--muted); font-size: 11px; }
+.calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.calendar-legend i { width: 5px; height: 5px; border-radius: 50%; }
+.calendar-today-mark { display: inline-block; width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--blue-600); }
+.calendar-day-section { max-width: 640px; margin: 0 auto; }
+.calendar-day-section h3 { margin: 0 2px 12px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.calendar-day-section h3 small { color: var(--muted); font-weight: 400; }
+.calendar-empty { padding: 26px 0; color: var(--muted); font-size: 13px; text-align: center; }
+.calendar-day-list { display: flex; flex-direction: column; gap: 8px; }
+.calendar-day-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 13px 15px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; }
+.calendar-day-item:hover { border-color: #c3d2e4; }
+.calendar-day-item-main { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.calendar-day-item-main strong { font-size: 15px; }
+.calendar-day-item-main > span { color: var(--muted); font-size: 12px; }
+.calendar-day-item-content { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .form label { display: block; margin-bottom: 15px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .form input, .form select, .form textarea { width: 100%; min-height: 40px; margin-top: 6px; padding: 9px 11px; color: var(--ink); border: 1px solid #d4dbe4; border-radius: 6px; background: #fff; font-size: 14px; font-weight: 400; }
 .form input:focus, .form select:focus, .form textarea:focus { outline: 3px solid rgba(29,99,221,.16); border-color: var(--blue-600); }

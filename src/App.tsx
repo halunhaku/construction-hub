@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import CalendarPage from './pages/CalendarPage'
 import DashboardPage from './pages/DashboardPage'
 import ListPage from './pages/ListPage'
 import NewRecordPage from './pages/NewRecordPage'
@@ -19,6 +20,7 @@ export default function App() {
   const hash = useHashRoute()
   const [path, id, sub] = hash.replace(/^#\/?/, '').split('/')
 
+  if (path === 'calendar') return <CalendarPage />
   if (path === 'new') return <NewRecordPage key={id ?? ''} project={id ? decodeURIComponent(id) : undefined} />
   if (path === 'project' && id) return <ListPage project={decodeURIComponent(id)} />
   if (path === 'record' && id && sub === 'zone') {
