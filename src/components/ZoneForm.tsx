@@ -19,7 +19,7 @@ export default function ZoneForm({
   const [paste, setPaste] = useState('')
   const [pasteMsg, setPasteMsg] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const enabled = value !== null
+  const enabled = allowDisable ? value !== null : true
   const form = value ?? defaults
 
   const zones = useMemo(() => buildZones(form), [form])

@@ -5,6 +5,7 @@ import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { today } from '../util'
 import { validateZone } from '../zone/validation'
+import { defaults, parseStake } from '../zone/utils'
 
 const DIRECTIONS = [
   { value: '', label: '不指定' },
@@ -24,7 +25,8 @@ export default function NewRecordPage({ project }: { project?: string }) {
     content: '',
     work_date: today(),
   })
-  const [zone, setZone] = useState<ZoneParams | null>(null)
+  // 布置图必选：初始为启用状态（defaults），起点桩号与长度由表单桩号联动
+  const [zone, setZone] = useState<ZoneParams | null>({ ...defaults, start: '' })
   const [options, setOptions] = useState<{
     projects: string[]
     highways: string[]
@@ -42,9 +44,26 @@ export default function NewRecordPage({ project }: { project?: string }) {
       })
   }, [])
 
+  // 起始桩号 → 布置图起点；结束桩号 → 布置图长度（结束-起始）
+  function handleStake(v: string) {
+    setForm((f) => ({ ...f, stake: v }))
+    setZone((z) => (z ? { ...z, start: v || z.start } : z))
+  }
+
+  function handleEndStake(v: string) {
+    setForm((f) => ({ ...f, end_stake: v }))
+    setZone((z) => {
+      if (!z) return z
+      const s = parseStake(z.start)
+      const e = parseStake(v)
+      if (s != null && e != null && e > s) return { ...z, work: e - s }
+      return z
+    })
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    // 布置图已勾选但参数无效时阻止保存，并在预览区提示
+    // 布置图必选：参数无效时阻止保存，并在预览区提示
     const zoneErrors = validateZone(zone)
     if (Object.keys(zoneErrors).length > 0) {
       setError('作业区布置参数有误，请修正（红色提示处）')
@@ -127,47 +146,37 @@ export default function NewRecordPage({ project }: { project?: string }) {
 
         <div className="form-row">
           <label>
-            桩号 <b className="req">*</b>
+            起始桩号 <b className="req">*</b>
             <input
               required
               placeholder="例如：K12+345"
               value={form.stake}
-              onChange={(e) => setForm({ ...form, stake: e.target.value })}
+              onChange={(e) => handleStake(e.target.value)}
             />
           </label>
           <label>
             结束桩号
             <input
-              placeholder="例如：K12+445（可选）"
+              placeholder="例如：K12+445（用于自动计算布置图长度）"
               value={form.end_stake}
-              onChange={(e) => setForm({ ...form, end_stake: e.target.value })}
+              onChange={(e) => handleEndStake(e.target.value)}
             />
           </label>
         </div>
 
-        <div className="form-row">
-          <label>
-            施工位置
-            <input
-              placeholder="例如：右侧路肩"
-              value={form.work_location}
-              onChange={(e) => setForm({ ...form, work_location: e.target.value })}
-            />
-          </label>
-          <label>
-            方向
-            <select
-              value={form.direction}
-              onChange={(e) => setForm({ ...form, direction: e.target.value })}
-            >
-              {DIRECTIONS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <label>
+          方向
+          <select
+            value={form.direction}
+            onChange={(e) => setForm({ ...form, direction: e.target.value })}
+          >
+            {DIRECTIONS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label>
           施工内容
@@ -195,7 +204,7 @@ export default function NewRecordPage({ project }: { project?: string }) {
         </label>
 
         <div className="zone-in-new">
-          <ZoneForm value={zone} onChange={setZone} />
+          <ZoneForm value={zone} onChange={setZone} allowDisable={false} />
         </div>
 
         {error && <div className="notice error">{error}</div>}
