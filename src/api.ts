@@ -49,8 +49,34 @@ export interface Options {
   contents: string[]
 }
 
-export function getOptions(): Promise<Options> {
-  return request<Options>('/options')
+const OPTIONS_CACHE_KEY = 'opts-cache-v1'
+const OPTIONS_TTL = 24 * 60 * 60 * 1000
+
+/** 选项数据缓存 24h：命中后立即返回（不阻塞页面），并在后台静默刷新 */
+export async function getOptions(): Promise<Options> {
+  try {
+    const raw = localStorage.getItem(OPTIONS_CACHE_KEY)
+    if (raw) {
+      const cached = JSON.parse(raw) as { t: number; v: Options }
+      if (Date.now() - cached.t < OPTIONS_TTL) {
+        void request<Options>('/options')
+          .then((fresh) => {
+            localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({ t: Date.now(), v: fresh }))
+          })
+          .catch(() => undefined)
+        return cached.v
+      }
+    }
+  } catch {
+    /* 缓存损坏则忽略，重新请求 */
+  }
+  const fresh = await request<Options>('/options')
+  try {
+    localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify({ t: Date.now(), v: fresh }))
+  } catch {
+    /* 存储失败不影响使用 */
+  }
+  return fresh
 }
 
 export function createRecord(data: RecordForm): Promise<{ id: string }> {
