@@ -11,10 +11,13 @@ export default function ZoneForm({
   value,
   onChange,
   allowDisable = true,
+  linked = false,
 }: {
   value: ZoneParams | null
   onChange: (zone: ZoneParams | null) => void
   allowDisable?: boolean
+  /** linked：作业区起点/长度/方向已由外层表单输入联动，此处不再重复显示 */
+  linked?: boolean
 }) {
   const [paste, setPaste] = useState('')
   const [pasteMsg, setPasteMsg] = useState('')
@@ -35,7 +38,12 @@ export default function ZoneForm({
       setPasteMsg('参数格式无效：请粘贴有效的作业区布置参数 JSON')
       return
     }
-    onChange(zone)
+    // linked 模式下：起点/长度/方向由主表单控制，粘贴只应用其余参数
+    onChange(
+      linked
+        ? { ...zone, start: form.start, work: form.work, direction: form.direction }
+        : zone,
+    )
     setPasteMsg('✅ 已应用粘贴的参数')
     setPaste('')
     setErrors({})
@@ -62,52 +70,58 @@ export default function ZoneForm({
 
       {enabled && (
         <>
-          <div className="form-row">
-            <label>
-              作业区起点（桩号）
-              <input
-                placeholder="例如：K123+800"
-                value={form.start}
-                onChange={(e) => set('start', e.target.value)}
-              />
-            </label>
-            <label>
-              作业区长度（m）
-              <input
-                type="number"
-                min={10}
-                value={form.work}
-                onChange={(e) => set('work', Number(e.target.value))}
-              />
-            </label>
-          </div>
-          {errors.start && <p className="field-error">{errors.start}</p>}
-          {errors.work && <p className="field-error">{errors.work}</p>}
+          {!linked && (
+            <>
+              <div className="form-row">
+                <label>
+                  作业区起点（桩号）
+                  <input
+                    placeholder="例如：K123+800"
+                    value={form.start}
+                    onChange={(e) => set('start', e.target.value)}
+                  />
+                </label>
+                <label>
+                  作业区长度（m）
+                  <input
+                    type="number"
+                    min={10}
+                    value={form.work}
+                    onChange={(e) => set('work', Number(e.target.value))}
+                  />
+                </label>
+              </div>
+              {errors.start && <p className="field-error">{errors.start}</p>}
+              {errors.work && <p className="field-error">{errors.work}</p>}
+            </>
+          )}
 
           <div className="form-row">
-            <div className="field-block">
-              <span className="field-label">作业区方向</span>
-              <div className="seg" role="radiogroup" aria-label="作业区方向">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={form.direction === 'up'}
-                  className={form.direction === 'up' ? 'active' : ''}
-                  onClick={() => set('direction', 'up')}
-                >
-                  上行
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={form.direction === 'down'}
-                  className={form.direction === 'down' ? 'active' : ''}
-                  onClick={() => set('direction', 'down')}
-                >
-                  下行
-                </button>
+            {!linked && (
+              <div className="field-block">
+                <span className="field-label">作业区方向</span>
+                <div className="seg" role="radiogroup" aria-label="作业区方向">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={form.direction === 'up'}
+                    className={form.direction === 'up' ? 'active' : ''}
+                    onClick={() => set('direction', 'up')}
+                  >
+                    上行
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={form.direction === 'down'}
+                    className={form.direction === 'down' ? 'active' : ''}
+                    onClick={() => set('direction', 'down')}
+                  >
+                    下行
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
             <div className="field-block">
               <span className="field-label">施工位置</span>
               <div className="seg" role="radiogroup" aria-label="施工位置">

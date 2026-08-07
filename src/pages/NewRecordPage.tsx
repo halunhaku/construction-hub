@@ -54,6 +54,16 @@ export default function NewRecordPage({ project }: { project?: string }) {
     setZone((z) => (z ? { ...z, work: v } : z))
   }
 
+  // 主表单方向（上行/下行）→ 布置图作业区方向联动
+  function handleDirection(v: string) {
+    setForm((f) => ({ ...f, direction: v }))
+    setZone((z) => {
+      if (!z) return z
+      if (v === 'up' || v === 'down') return { ...z, direction: v }
+      return z
+    })
+  }
+
   // 结束桩号 = 起始桩号 + 作业区长度（自动计算，无需手输）
   useEffect(() => {
     const s = parseStake(zone?.start ?? '')
@@ -69,7 +79,14 @@ export default function NewRecordPage({ project }: { project?: string }) {
     // 布置图必选：参数无效时阻止保存，并在预览区提示
     const zoneErrors = validateZone(zone)
     if (Object.keys(zoneErrors).length > 0) {
-      setError('作业区布置参数有误，请修正（红色提示处）')
+      // linked 模式下起点/长度错误不显示红点，直接在提示中说明
+      const linkedMsg = [
+        zoneErrors.start ? `起始桩号：${zoneErrors.start}` : '',
+        zoneErrors.work ? `作业区长度：${zoneErrors.work}` : '',
+      ]
+        .filter(Boolean)
+        .join('；')
+      setError(linkedMsg || '作业区布置参数有误，请修正（红色提示处）')
       return
     }
     setSaving(true)
@@ -172,7 +189,7 @@ export default function NewRecordPage({ project }: { project?: string }) {
           方向
           <select
             value={form.direction}
-            onChange={(e) => setForm({ ...form, direction: e.target.value })}
+            onChange={(e) => handleDirection(e.target.value)}
           >
             {DIRECTIONS.map((d) => (
               <option key={d.value} value={d.value}>
@@ -208,7 +225,7 @@ export default function NewRecordPage({ project }: { project?: string }) {
         </label>
 
         <div className="zone-in-new">
-          <ZoneForm value={zone} onChange={setZone} allowDisable={false} />
+          <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked />
         </div>
 
         {error && <div className="notice error">{error}</div>}
