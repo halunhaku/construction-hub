@@ -51,8 +51,9 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .breadcrumbs span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .breadcrumbs svg { width: 14px; height: 14px; }
 .app-header-tools { margin-left: auto; display: flex; align-items: center; gap: 7px; }
-.project-switcher { height: 34px; max-width: 360px; display: flex; align-items: center; gap: 12px; padding: 0 12px; color: #eaf0f7; border: 1px solid #35506d; border-radius: 7px; background: #0b2949; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.project-switcher svg { width: 14px; height: 14px; }
+.project-switcher { height: 34px; max-width: min(380px, 42vw); display: flex; align-items: center; gap: 12px; padding: 0 12px; color: #eaf0f7; border: 1px solid #35506d; border-radius: 7px; background: #0b2949; cursor: pointer; }
+.project-switcher-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-switcher svg { width: 14px; height: 14px; flex-shrink: 0; }
 .icon-btn { width: 34px; height: 34px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
 .app-header .icon-btn:hover { background: rgba(255,255,255,.1); }
 .user-button { width: 34px; height: 34px; border: 0; border-radius: 50%; color: #fff; background: #1e62cc; font-size: 12px; cursor: pointer; }

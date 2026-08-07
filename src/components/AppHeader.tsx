@@ -23,8 +23,8 @@ export default function AppHeader({
       </nav>
       <div className="app-header-tools">
         {project ? (
-          <button className="project-switcher">
-            项目：{project}
+          <button className="project-switcher" title={project}>
+            <span className="project-switcher-label">项目：{project}</span>
             <ChevronDown aria-hidden="true" />
           </button>
         ) : null}
