@@ -276,14 +276,16 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .page > .topbar { min-height: 54px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .topbar h1 { margin: 0; font-size: 22px; }
 .topbar-spacer { width: 82px; }
-.form { padding: 20px; }
+.form { padding: 0; }
+.form-section-title { margin: 0 2px 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.form-section-title + .card { margin-bottom: 24px; }
+.form-card { padding: 18px 20px 6px; }
 .form label { display: block; margin-bottom: 15px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .form input, .form select, .form textarea { width: 100%; min-height: 40px; margin-top: 6px; padding: 9px 11px; color: var(--ink); border: 1px solid #d4dbe4; border-radius: 6px; background: #fff; font-size: 14px; font-weight: 400; }
 .form input:focus, .form select:focus, .form textarea:focus { outline: 3px solid rgba(29,99,221,.16); border-color: var(--blue-600); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .req, .field-error { color: var(--danger); }
 .field-error { margin: -8px 0 10px; font-size: 11px; }
-.zone-in-new { margin: 20px 0; padding-top: 18px; border-top: 1px solid var(--line); }
 .zone-form-toggle { display: flex !important; align-items: center; gap: 8px; color: var(--ink) !important; }
 .zone-form-toggle input { width: 16px; min-height: auto; margin: 0; }
 .field-block { margin-bottom: 15px; }

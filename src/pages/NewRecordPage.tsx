@@ -115,7 +115,9 @@ export default function NewRecordPage({ project }: { project?: string }) {
         <span className="topbar-spacer" />
       </header>
 
-      <form className="card form" onSubmit={submit}>
+      <form className="form" onSubmit={submit}>
+        <h2 className="form-section-title">基本信息</h2>
+        <div className="card form-card">
         <label>
           项目名称 <b className="req">*</b>
           <input
@@ -224,7 +226,10 @@ export default function NewRecordPage({ project }: { project?: string }) {
           />
         </label>
 
-        <div className="zone-in-new">
+        </div>
+
+        <h2 className="form-section-title">作业区布置</h2>
+        <div className="card form-card">
           <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked />
         </div>
 

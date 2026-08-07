@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { RoadDiagram } from '../zone/RoadDiagram'
-import { buildZones, defaults, parseZoneParams } from '../zone/utils'
+import { buildZones, defaults } from '../zone/utils'
 import type { ZoneParams } from '../types'
 
 /**
@@ -19,8 +19,6 @@ export default function ZoneForm({
   /** linked：作业区起点/长度/方向已由外层表单输入联动，此处不再重复显示 */
   linked?: boolean
 }) {
-  const [paste, setPaste] = useState('')
-  const [pasteMsg, setPasteMsg] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const enabled = allowDisable ? value !== null : true
   const form = value ?? defaults
@@ -30,23 +28,6 @@ export default function ZoneForm({
 
   function set<K extends keyof ZoneParams>(key: K, v: ZoneParams[K]) {
     onChange({ ...form, [key]: v })
-  }
-
-  function applyPaste() {
-    const zone = parseZoneParams(paste)
-    if (!zone) {
-      setPasteMsg('参数格式无效：请粘贴有效的作业区布置参数 JSON')
-      return
-    }
-    // linked 模式下：起点/长度/方向由主表单控制，粘贴只应用其余参数
-    onChange(
-      linked
-        ? { ...zone, start: form.start, work: form.work, direction: form.direction }
-        : zone,
-    )
-    setPasteMsg('✅ 已应用粘贴的参数')
-    setPaste('')
-    setErrors({})
   }
 
   function toggle(enable: boolean) {
@@ -232,20 +213,6 @@ export default function ZoneForm({
               {errors.speed && <p className="field-error">{errors.speed}</p>}
             </div>
           </details>
-
-          <div className="paste-zone">
-            <span className="field-label">导入作业区布置参数（可选）</span>
-            <textarea
-              rows={2}
-              placeholder='例如 {"start":"K123+800","work":1000,...}'
-              value={paste}
-              onChange={(e) => setPaste(e.target.value)}
-            />
-            <button type="button" className="btn" onClick={applyPaste}>
-              应用粘贴参数
-            </button>
-            {pasteMsg && <p className="paste-msg">{pasteMsg}</p>}
-          </div>
 
           <div className="zone-preview-inline">
             <p className="zone-meta">
