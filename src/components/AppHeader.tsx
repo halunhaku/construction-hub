@@ -95,7 +95,7 @@ export default function AppHeader({
           </div>
         ) : null}
         <button className="icon-btn" aria-label="日历" onClick={() => (window.location.hash = '#/calendar')}><CalendarDays /></button>
-        <button className="icon-btn" aria-label="帮助"><CircleHelp /></button>
+        <button className="icon-btn" aria-label="帮助" onClick={() => (window.location.hash = '#/help')}><CircleHelp /></button>
         <button className="user-button" aria-label="用户菜单">User</button>
       </div>
     </header>

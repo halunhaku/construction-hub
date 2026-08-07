@@ -324,6 +324,20 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .calendar-day-item-main strong { font-size: 15px; }
 .calendar-day-item-main > span { color: var(--muted); font-size: 12px; }
 .calendar-day-item-content { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.help-page { max-width: 720px; }
+.help-card { padding: 18px 20px 16px; }
+.help-card h3 { margin: 0 0 12px; font-size: 15px; }
+.help-steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding-left: 20px; color: var(--ink); font-size: 13.5px; line-height: 1.65; }
+.help-steps li::marker { color: var(--blue-600); font-weight: 700; }
+.help-note { margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--blue-50); color: var(--blue-700); font-size: 12px; line-height: 1.6; }
+.help-faq { border-top: 1px solid var(--line); }
+.help-faq:first-child { border-top: 0; }
+.help-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 2px; color: var(--ink); font-size: 13.5px; font-weight: 600; cursor: pointer; list-style: none; }
+.help-faq summary::-webkit-details-marker { display: none; }
+.help-faq summary svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--muted); transition: transform .15s; }
+.help-faq[open] summary svg { transform: rotate(90deg); }
+.help-faq p { margin: 0 0 14px; padding: 0 2px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.help-foot { margin: 18px 2px 0; color: var(--muted); font-size: 12px; text-align: center; }
 .form label { display: block; margin-bottom: 15px; color: var(--muted); font-size: 12px; font-weight: 600; }
 .form input, .form select, .form textarea { width: 100%; min-height: 40px; margin-top: 6px; padding: 9px 11px; color: var(--ink); border: 1px solid #d4dbe4; border-radius: 6px; background: #fff; font-size: 14px; font-weight: 400; }
 .form input:focus, .form select:focus, .form textarea:focus { outline: 3px solid rgba(29,99,221,.16); border-color: var(--blue-600); }
