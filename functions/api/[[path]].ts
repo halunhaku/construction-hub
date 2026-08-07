@@ -74,6 +74,7 @@ app.get('/health', (c) => c.json({ ok: true }))
 // 已有项目名称 / 高速 / 路段 / 施工内容选项（供表单下拉选择）
 app.get('/options', async (c) => {
   // 数据变化不频繁，允许 Cloudflare 边缘缓存 5 分钟，减少重复查询
+  c.header('CDN-Cache-Control', 'max-age=300')
   c.header('Cache-Control', 'public, s-maxage=300')
   const projects = await c.env.DB.prepare(
     "SELECT DISTINCT project_name FROM records WHERE project_name != '' ORDER BY project_name",
