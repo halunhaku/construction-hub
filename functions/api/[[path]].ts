@@ -71,6 +71,20 @@ const RECORD_SELECT = `
 
 app.get('/health', (c) => c.json({ ok: true }))
 
+// 项目列表（供顶部项目切换器）
+app.get('/projects', async (c) => {
+  c.header('CDN-Cache-Control', 'max-age=120')
+  c.header('Cache-Control', 'public, s-maxage=120')
+  const { results } = await c.env.DB.prepare(
+    `SELECT project_name AS name, COUNT(*) AS count
+     FROM records
+     WHERE project_name != ''
+     GROUP BY project_name
+     ORDER BY count DESC`,
+  ).all<{ name: string; count: number }>()
+  return c.json(results)
+})
+
 // 已有项目名称 / 高速 / 路段 / 施工内容选项（供表单下拉选择）
 app.get('/options', async (c) => {
   // 数据变化不频繁，允许 Cloudflare 边缘缓存 5 分钟，减少重复查询

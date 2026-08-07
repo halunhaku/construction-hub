@@ -49,6 +49,16 @@ export interface Options {
   contents: string[]
 }
 
+export interface ProjectSummary {
+  name: string
+  count: number
+}
+
+/** 项目列表（顶部项目切换器用） */
+export function listProjects(): Promise<ProjectSummary[]> {
+  return request<ProjectSummary[]>('/projects')
+}
+
 const OPTIONS_CACHE_KEY = 'opts-cache-v1'
 const OPTIONS_TTL = 24 * 60 * 60 * 1000
 
