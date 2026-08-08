@@ -17,7 +17,7 @@ import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
 import { buildExportPage, renderPageToBlob, signSchedule } from '../zone/export'
 import { buildZones, parseZoneParams, stake } from '../zone/utils'
-import { directionLabel, PHASE_COLORS, PHASES, type Phase, type Photo, type RecordItem } from '../types'
+import { directionLabel, PHASE_COLORS, PHASE_SHORT, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { formatTime, uid } from '../util'
 
 function recordState(record: RecordItem): { label: string; className: string } {
@@ -27,6 +27,18 @@ function recordState(record: RecordItem): { label: string; className: string } {
   if (beforeReady && duringReady && !afterReady) return { label: '施工中', className: 'progress' }
   if (!record.zone_params || !beforeReady || !duringReady || !afterReady) return { label: '资料待补充', className: 'incomplete' }
   return { label: '已完整', className: 'complete' }
+}
+
+/**
+ * 照片唯一编号：路线号-桩号数字-拍摄日期(月日)-序号，如 S50-96350-0808-003。
+ * 序号为记录内照片按拍摄时间排序的稳定序号（导出不随机变化）。
+ */
+function photoNoOf(record: RecordItem, photo: Photo, seq: number): string {
+  const route = (record.highway.match(/^[A-Za-z]+\d+/) ?? [''])[0]
+  const stakeDigits = record.stake.replace(/\D/g, '')
+  const local = formatTime(photo.taken_at) // YYYY-MM-DD HH:MM:SS（本地时间）
+  const mmdd = local.slice(5, 7) + local.slice(8, 10)
+  return `${route}-${stakeDigits}-${mmdd}-${String(seq).padStart(3, '0')}`
 }
 
 export default function RecordPage({ id }: { id: string }) {
@@ -171,6 +183,16 @@ export default function RecordPage({ id }: { id: string }) {
     if (!record || downloading) return
     const all = PHASES.flatMap((phase) => record.photos[phase.key].map((photo) => ({ phase, photo })))
     if (all.length === 0 && !zoneParams) return showFlash('暂无照片可下载')
+    // 方向文本：数据库仅存 up/down（无「佳县方向」等命名），显示标准方向
+    const dirText = directionLabel(record.direction)
+    // 单位名：从「公司名+工程名」连写中拆出公司名，拆不出则用完整项目名
+    const unitName = record.project_name.match(/^(.+?(?:有限公司|公司))(.+)$/)?.[1] ?? record.project_name
+    // 照片序号：记录内照片按拍摄时间排序，稳定不随机
+    const photoSeq = new Map<string, number>()
+    all
+      .slice()
+      .sort((a, b) => a.photo.taken_at.localeCompare(b.photo.taken_at))
+      .forEach((item, index) => photoSeq.set(item.photo.id, index + 1))
     setDownloading(true)
     try {
       const zip = new JSZip()
@@ -190,12 +212,14 @@ export default function RecordPage({ id }: { id: string }) {
       for (const { phase, photo } of all) {
         const phaseLabel = phase.label
         const blob = await watermarkImage(photoUrl(photo.id), {
-          main: `${record.stake} ${directionLabel(record.direction)} · ${record.content || '施工记录'}`,
-          project: record.project_name,
-          road: `${record.highway} · ${record.section} · 施工日期 ${record.work_date}`,
-          phase: phaseLabel,
+          main: dirText ? `${record.stake} ｜ ${dirText}` : record.stake,
+          content: record.content || record.work_location || '施工记录',
+          route: `${record.highway}${record.section}`,
+          unit: `${unitName} · ${record.work_date}`,
+          phase: PHASE_SHORT[phase.key],
           phaseColor: PHASE_COLORS[phase.key],
-          takenAt: `拍摄 ${formatTime(photo.taken_at)}`,
+          takenAt: formatTime(photo.taken_at),
+          photoNo: photoNoOf(record, photo, photoSeq.get(photo.id) ?? 0),
         })
         zip.file(`${phaseLabel}/${photo.id}.jpg`, blob)
       }

@@ -17,6 +17,13 @@ export const PHASE_COLORS: Record<Phase, string> = {
   after: '#34c759',
 }
 
+/** 三阶段短标签（水印/导出用）：施工前 / 施工中 / 施工后 */
+export const PHASE_SHORT: Record<Phase, string> = {
+  before: '施工前',
+  during: '施工中',
+  after: '施工后',
+}
+
 export interface Photo {
   id: string
   file_key: string

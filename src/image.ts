@@ -48,18 +48,22 @@ function loadViaImg(file: File): Promise<HTMLImageElement> {
 }
 
 export interface WatermarkInfo {
-  /** 主信息行：桩号 方向 · 施工内容 */
+  /** 第一行主信息：桩号 ｜ 方向（SemiBold，最突出） */
   main: string
-  /** 项目名称 */
-  project: string
-  /** 次要信息行：道路 · 路段 · 施工日期 */
-  road: string
-  /** 阶段标签：施工前 / 施工过程中 / 施工后 */
+  /** 第二行：施工内容（次一级） */
+  content: string
+  /** 第三行：路线（弱化） */
+  route: string
+  /** 第四行：单位 · 施工日期（弱化） */
+  unit: string
+  /** 阶段短标签：施工前 / 施工中 / 施工后 */
   phase: string
   /** 阶段徽章颜色 */
   phaseColor: string
-  /** 拍摄时间（含前缀，如「拍摄 2026-08-08 09:39」） */
+  /** 拍摄时间（本地时间，YYYY-MM-DD HH:MM:SS，24 小时制） */
   takenAt: string
+  /** 照片唯一编号：路线-桩号-日期-序号（如 S50-96350-0808-003） */
+  photoNo: string
 }
 
 /** 超长文字截断为省略号 */
@@ -71,7 +75,10 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number):
 }
 
 /**
- * 给照片加底部通栏水印（渐变暗角 + 左侧主/次信息 + 右侧阶段徽章与拍摄时间），返回 JPEG Blob。
+ * 工程照片底部通栏水印：
+ * 左下为四行层级信息（桩号方向 / 施工内容 / 路线 / 单位·日期），
+ * 右下为阶段胶囊 + 拍摄时间 + 照片编号，底部渐变轻暗角。
+ * 字号基于图片短边等比缩放，横图/竖图/4K 均自适应。
  */
 export async function watermarkImage(url: string, info: WatermarkInfo): Promise<Blob> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -88,76 +95,103 @@ export async function watermarkImage(url: string, info: WatermarkInfo): Promise<
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('浏览器不支持 Canvas')
 
+  // 按原图自然尺寸绘制，不做缩放，避免高 DPI 文字模糊
   ctx.drawImage(img, 0, 0)
 
   const W = canvas.width
   const H = canvas.height
   const font = (weight: number, size: number) => `${weight} ${size}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`
-  const fsMain = Math.min(40, Math.max(20, Math.round(W / 55))) // 主行字号
-  const fsSub = Math.min(20, Math.max(11, Math.round(fsMain * 0.52))) // 次行字号
-  const pad = fsMain * 0.8
+  // 字号基于短边，保证横竖图与不同分辨率下比例协调
+  const base = Math.min(W, H)
+  const fsMain = Math.min(56, Math.max(20, Math.round(base / 55))) // 主行：SemiBold
+  const fsContent = Math.max(14, Math.round(fsMain * 0.68)) // 内容行
+  const fsSub = Math.max(11, Math.round(fsMain * 0.48)) // 弱化行
+  const pad = Math.max(20, Math.round(fsMain * 0.8)) // 左右安全距离
+  const padBottom = Math.max(18, Math.round(fsMain * 0.6)) // 底边距
 
-  // 先量右侧徽章，确定左列可用宽度
-  ctx.font = font(700, fsSub * 1.05)
-  const pillW = ctx.measureText(info.phase).width + fsSub * 1.5
-  const pillH = fsSub * 1.9
-  const rightColW = pillW + fsMain * 1.2
-  const leftMaxW = W - pad * 2 - rightColW
+  // 右列宽度（胶囊 / 时间 / 编号 取最宽）
+  ctx.font = font(700, Math.round(fsSub * 0.95))
+  const pillW = ctx.measureText(info.phase).width + fsSub * 1.3
+  const pillH = Math.round(fsSub * 1.7)
+  ctx.font = font(500, fsSub)
+  const timeW = ctx.measureText(info.takenAt).width
+  ctx.font = font(400, Math.round(fsSub * 0.88))
+  const noW = ctx.measureText(info.photoNo).width
+  const rightColW = Math.max(pillW, timeW, noW)
+  const leftMaxW = W - pad * 2 - rightColW - fsMain * 0.5
 
-  // 左列：主行 + 项目名 + 路段/日期
-  const mainH = fsMain * 1.35
-  const subH = fsSub * 1.55
-  const leftH = mainH + subH * 2
-  // 右列：阶段徽章 + 拍摄时间
-  const rightH = pillH + fsSub * 1.7
+  // 行高
+  const mainH = fsMain * 1.4
+  const contentH = fsContent * 1.5
+  const subH = fsSub * 1.6
+  const leftH = mainH + contentH + subH * 2
+  const noH = fsSub * 0.88 * 1.5
+  const gap = fsSub * 0.45
+  const rightH = pillH + fsSub * 1.5 + noH + gap * 2
 
-  const padTop = fsMain * 1.1
-  const padBottom = fsMain * 0.7
+  const padTop = fsMain * 0.55 // 渐变区高度压低
   const barH = padTop + padBottom + Math.max(leftH, rightH)
   const barTop = H - barH
 
-  // 底部渐变暗角
+  // 底部轻渐变暗角：向上快速过渡，最大透明度 50%
   const gradient = ctx.createLinearGradient(0, barTop, 0, H)
   gradient.addColorStop(0, 'rgba(0,0,0,0)')
-  gradient.addColorStop(0.45, 'rgba(0,0,0,0.28)')
-  gradient.addColorStop(1, 'rgba(0,0,0,0.78)')
+  gradient.addColorStop(0.35, 'rgba(0,0,0,0.14)')
+  gradient.addColorStop(1, 'rgba(0,0,0,0.5)')
   ctx.fillStyle = gradient
   ctx.fillRect(0, barTop, W, barH)
 
-  // 左侧信息
-  const textX = pad
-  let y = barTop + padTop
+  // 文字轻微阴影，提升复杂背景可读性
+  ctx.shadowColor = 'rgba(0,0,0,0.55)'
+  ctx.shadowBlur = Math.max(2, Math.round(fsMain * 0.12))
+  ctx.shadowOffsetY = 1
+
+  // 左列四行，自下而上定位，底部基线与右列编号对齐
+  const leftX = pad
+  const unitBaseline = H - padBottom
+  const routeBaseline = unitBaseline - subH
+  const contentBaseline = routeBaseline - subH
+  const mainBaseline = contentBaseline - contentH
   ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'left'
+
   ctx.fillStyle = '#ffffff'
-  ctx.font = font(700, fsMain)
-  ctx.fillText(fitText(ctx, info.main, leftMaxW), textX, y + fsMain)
-  y += mainH
+  ctx.font = font(600, fsMain)
+  ctx.fillText(fitText(ctx, info.main, leftMaxW), leftX, mainBaseline)
+
+  ctx.font = font(500, fsContent)
+  ctx.fillStyle = 'rgba(255,255,255,0.92)'
+  ctx.fillText(fitText(ctx, info.content, leftMaxW), leftX, contentBaseline)
+
+  ctx.font = font(400, fsSub)
+  ctx.fillStyle = 'rgba(255,255,255,0.72)'
+  ctx.fillText(fitText(ctx, info.route, leftMaxW), leftX, routeBaseline)
+
+  ctx.fillStyle = 'rgba(255,255,255,0.62)'
+  ctx.fillText(fitText(ctx, info.unit, leftMaxW), leftX, unitBaseline)
+
+  // 右列自下而上：照片编号 → 拍摄时间 → 阶段胶囊
+  const rightX = W - pad
+  ctx.font = font(400, Math.round(fsSub * 0.88))
+  ctx.textAlign = 'right'
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'
+  ctx.fillText(info.photoNo, rightX, unitBaseline)
 
   ctx.font = font(500, fsSub)
   ctx.fillStyle = 'rgba(255,255,255,0.85)'
-  ctx.fillText(fitText(ctx, info.project, leftMaxW), textX, y + fsSub)
-  y += subH
-  ctx.fillStyle = 'rgba(255,255,255,0.72)'
-  ctx.fillText(fitText(ctx, info.road, leftMaxW), textX, y + fsSub)
+  ctx.fillText(info.takenAt, rightX, unitBaseline - noH - gap)
 
-  // 右侧：阶段徽章 + 拍摄时间
-  const rightX = W - pad
-  const pillY = barTop + padTop
+  const pillY = unitBaseline - noH - gap - fsSub * 1.5 - gap - pillH
+  ctx.shadowColor = 'transparent'
   ctx.fillStyle = info.phaseColor
   ctx.beginPath()
   ctx.roundRect(rightX - pillW, pillY, pillW, pillH, pillH / 2)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
-  ctx.font = font(700, fsSub * 1.05)
+  ctx.font = font(700, Math.round(fsSub * 0.95))
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(info.phase, rightX - pillW / 2, pillY + pillH / 2 + 0.5)
-  ctx.fillStyle = 'rgba(255,255,255,0.85)'
-  ctx.font = font(500, fsSub)
-  ctx.textAlign = 'right'
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillText(info.takenAt, rightX, pillY + pillH + fsSub * 1.45)
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('水印生成失败'))), 'image/jpeg', 0.92)

@@ -1,9 +1,9 @@
-/** SQLite datetime('now') 是 UTC 的 "YYYY-MM-DD HH:MM:SS"，转本地时间显示 */
+/** SQLite datetime('now') 是 UTC 的 "YYYY-MM-DD HH:MM:SS"，转本地时间显示（24 小时制，带秒） */
 export function formatTime(s: string): string {
   const d = new Date(s.replace(' ', 'T') + 'Z')
   if (Number.isNaN(d.getTime())) return s
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 export function today(): string {
