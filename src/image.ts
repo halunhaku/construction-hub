@@ -101,11 +101,11 @@ export async function watermarkImage(url: string, info: WatermarkInfo): Promise<
   const W = canvas.width
   const H = canvas.height
   const font = (weight: number, size: number) => `${weight} ${size}px -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif`
-  // 字号基于短边，保证横竖图与不同分辨率下比例协调
+  // 字号基于短边，保证横竖图与不同分辨率下比例协调（主行约短边/42，偏大保证可读）
   const base = Math.min(W, H)
-  const fsMain = Math.min(56, Math.max(20, Math.round(base / 55))) // 主行：SemiBold
-  const fsContent = Math.max(14, Math.round(fsMain * 0.68)) // 内容行
-  const fsSub = Math.max(11, Math.round(fsMain * 0.48)) // 弱化行
+  const fsMain = Math.min(72, Math.max(24, Math.round(base / 42))) // 主行：SemiBold
+  const fsContent = Math.max(15, Math.round(fsMain * 0.68)) // 内容行
+  const fsSub = Math.max(12, Math.round(fsMain * 0.48)) // 弱化行
   const pad = Math.max(20, Math.round(fsMain * 0.8)) // 左右安全距离
   const padBottom = Math.max(18, Math.round(fsMain * 0.6)) // 底边距
 

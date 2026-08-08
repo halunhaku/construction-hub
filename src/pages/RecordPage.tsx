@@ -185,8 +185,6 @@ export default function RecordPage({ id }: { id: string }) {
     if (all.length === 0 && !zoneParams) return showFlash('暂无照片可下载')
     // 方向文本：数据库仅存 up/down（无「佳县方向」等命名），显示标准方向
     const dirText = directionLabel(record.direction)
-    // 单位名：从「公司名+工程名」连写中拆出公司名，拆不出则用完整项目名
-    const unitName = record.project_name.match(/^(.+?(?:有限公司|公司))(.+)$/)?.[1] ?? record.project_name
     // 照片序号：记录内照片按拍摄时间排序，稳定不随机
     const photoSeq = new Map<string, number>()
     all
@@ -214,8 +212,8 @@ export default function RecordPage({ id }: { id: string }) {
         const blob = await watermarkImage(photoUrl(photo.id), {
           main: dirText ? `${record.stake} ｜ ${dirText}` : record.stake,
           content: record.content || record.work_location || '施工记录',
-          route: `${record.highway}${record.section}`,
-          unit: `${unitName} · ${record.work_date}`,
+          route: `${record.highway}${record.section} · ${record.work_date}`,
+          unit: record.project_name,
           phase: PHASE_SHORT[phase.key],
           phaseColor: PHASE_COLORS[phase.key],
           takenAt: formatTime(photo.taken_at),
