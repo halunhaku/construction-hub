@@ -16,10 +16,11 @@ src/zone/        作业区计算、道路图与导出引擎
 functions/       Cloudflare Pages API
 migrations/      D1 数据库迁移
 public/          静态资源
-miniprogram/     同一平台的微信小程序客户端（保留）
 schema.sql       D1 完整表结构
 wrangler.toml    Cloudflare 配置
 ```
+
+微信小程序客户端已独立到上级目录 `微信小程序/`（原生小程序,独立运行,不依赖本平台）。
 
 ## 本地开发
 
