@@ -15,6 +15,7 @@ import ExcelImportButton from '../components/ExcelImportButton'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
+import { buildExportPage, renderPageToBlob, signSchedule } from '../zone/export'
 import { buildZones, parseZoneParams, stake } from '../zone/utils'
 import { directionLabel, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { uid } from '../util'
@@ -148,13 +149,44 @@ export default function RecordPage({ id }: { id: string }) {
     }
   }
 
+  /** 把当前作业区布置图渲染成 A4 横向 JPG（3508×2480，与「导出图纸 JPG」一致） */
+  async function buildDiagramBlob(): Promise<Blob | null> {
+    if (!zoneParams) return null
+    const svg = document.querySelector<SVGSVGElement>('.diagram-stage .roadSvg')
+    const viewBox = svg?.getAttribute('viewBox')
+    if (!svg || !viewBox) return null
+    const zones = buildZones(zoneParams)
+    const page = buildExportPage({
+      svgViewBox: viewBox,
+      svgInner: svg.innerHTML,
+      params: zoneParams,
+      zones,
+      signRows: signSchedule(zones, zoneParams.direction),
+      total: zones.reduce((sum, zone) => sum + zone.length, 0),
+    })
+    return renderPageToBlob(page, 3508, 2480)
+  }
+
   async function downloadAll() {
     if (!record || downloading) return
     const all = PHASES.flatMap((phase) => record.photos[phase.key].map((photo) => ({ phase, photo })))
-    if (all.length === 0) return showFlash('暂无照片可下载')
+    if (all.length === 0 && !zoneParams) return showFlash('暂无照片可下载')
     setDownloading(true)
     try {
       const zip = new JSZip()
+      let diagramIncluded = false
+      // 先放作业区布置图，再放三阶段照片
+      if (zoneParams) {
+        try {
+          const diagram = await buildDiagramBlob()
+          if (diagram) {
+            zip.file('作业区布置图.jpg', diagram)
+            diagramIncluded = true
+          }
+        } catch {
+          // 图纸生成失败不影响照片打包
+        }
+      }
       for (const { phase, photo } of all) {
         const phaseLabel = phase.label
         const blob = await watermarkImage(photoUrl(photo.id), [
@@ -169,10 +201,14 @@ export default function RecordPage({ id }: { id: string }) {
       const content = await zip.generateAsync({ type: 'blob' })
       const anchor = document.createElement('a')
       anchor.href = URL.createObjectURL(content)
-      anchor.download = `${record.highway}_${record.stake}_施工照片.zip`
+      anchor.download = `${record.highway}_${record.stake}_施工档案.zip`
       anchor.click()
       URL.revokeObjectURL(anchor.href)
-      showFlash(`已打包下载 ${all.length} 张照片`)
+      const parts = [
+        all.length ? `${all.length} 张照片` : '',
+        diagramIncluded ? '作业区布置图' : '',
+      ].filter(Boolean)
+      showFlash(`已打包下载 ${parts.join('和')}`)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '打包下载失败')
     } finally {

@@ -102,6 +102,31 @@ function renderSvg(
 
 /* ── PNG 下载 ────────────────────────────────────────── */
 
+/** 将组装好的图纸页渲染为图片 Blob（供档案打包等场景复用） */
+export function renderPageToBlob(
+  page: string,
+  width: number,
+  height: number,
+  type: 'image/jpeg' | 'image/png' = 'image/jpeg',
+  quality = 0.92,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    renderSvg(
+      page,
+      width,
+      height,
+      canvas => {
+        canvas.toBlob(
+          blob => (blob ? resolve(blob) : reject(new Error('图纸渲染失败'))),
+          type,
+          quality,
+        )
+      },
+      () => reject(new Error('图纸渲染失败')),
+    )
+  })
+}
+
 export function downloadPng(
   page: string,
   width: number,
