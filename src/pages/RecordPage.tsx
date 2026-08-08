@@ -17,7 +17,7 @@ import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
 import { buildExportPage, renderPageToBlob, signSchedule } from '../zone/export'
 import { buildZones, parseZoneParams, stake } from '../zone/utils'
-import { directionLabel, PHASES, type Phase, type Photo, type RecordItem } from '../types'
+import { directionLabel, PHASE_COLORS, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { uid } from '../util'
 
 function recordState(record: RecordItem): { label: string; className: string } {
@@ -189,13 +189,14 @@ export default function RecordPage({ id }: { id: string }) {
       }
       for (const { phase, photo } of all) {
         const phaseLabel = phase.label
-        const blob = await watermarkImage(photoUrl(photo.id), [
-          record.project_name,
-          `${record.highway} ${record.section} ${record.stake} ${directionLabel(record.direction)}`,
-          `施工日期：${record.work_date}`,
-          `阶段：${phaseLabel}`,
-          `拍摄：${photo.taken_at}`,
-        ])
+        const blob = await watermarkImage(photoUrl(photo.id), {
+          main: `${record.stake} ${directionLabel(record.direction)} · ${record.content || '施工记录'}`,
+          project: record.project_name,
+          road: `${record.highway} · ${record.section} · 施工日期 ${record.work_date}`,
+          phase: phaseLabel,
+          phaseColor: PHASE_COLORS[phase.key],
+          takenAt: `拍摄 ${photo.taken_at}`,
+        })
         zip.file(`${phaseLabel}/${photo.id}.jpg`, blob)
       }
       const content = await zip.generateAsync({ type: 'blob' })

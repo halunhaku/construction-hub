@@ -10,6 +10,13 @@ export const PHASES: { key: Phase; label: string; hint: string }[] = [
   { key: 'after', label: '施工后', hint: '施工完成后拍摄' },
 ]
 
+/** 三阶段徽章颜色（水印/证据标记用） */
+export const PHASE_COLORS: Record<Phase, string> = {
+  before: '#007aff',
+  during: '#ff9f0a',
+  after: '#34c759',
+}
+
 export interface Photo {
   id: string
   file_key: string
