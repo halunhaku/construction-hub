@@ -18,7 +18,7 @@ import { compressImage, watermarkImage } from '../image'
 import { buildExportPage, renderPageToBlob, signSchedule } from '../zone/export'
 import { buildZones, parseZoneParams, stake } from '../zone/utils'
 import { directionLabel, PHASE_COLORS, PHASES, type Phase, type Photo, type RecordItem } from '../types'
-import { uid } from '../util'
+import { formatTime, uid } from '../util'
 
 function recordState(record: RecordItem): { label: string; className: string } {
   const beforeReady = record.photos.before.length > 0
@@ -195,7 +195,7 @@ export default function RecordPage({ id }: { id: string }) {
           road: `${record.highway} · ${record.section} · 施工日期 ${record.work_date}`,
           phase: phaseLabel,
           phaseColor: PHASE_COLORS[phase.key],
-          takenAt: `拍摄 ${photo.taken_at}`,
+          takenAt: `拍摄 ${formatTime(photo.taken_at)}`,
         })
         zip.file(`${phaseLabel}/${photo.id}.jpg`, blob)
       }
