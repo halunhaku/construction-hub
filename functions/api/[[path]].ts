@@ -143,6 +143,43 @@ app.post('/records', async (c) => {
   return c.json({ id }, 201)
 })
 
+// 更新台账记录基本信息（含布置参数，编辑页提交时一并联动）
+app.put('/records/:id', async (c) => {
+  const id = c.req.param('id')
+  const existing = await c.env.DB.prepare('SELECT id FROM records WHERE id = ?').bind(id).first()
+  if (!existing) return c.json({ error: '记录不存在' }, 404)
+  const body = await c.req.json().catch(() => null)
+  if (!body) return c.json({ error: '无效的请求体' }, 400)
+  const project_name = String(body.project_name ?? '').trim()
+  const highway = String(body.highway ?? '').trim()
+  const section = String(body.section ?? '').trim()
+  const work_location = String(body.work_location ?? '').trim()
+  const stake = String(body.stake ?? '').trim()
+  const end_stake = String(body.end_stake ?? '').trim()
+  const direction = String(body.direction ?? '').trim()
+  const content = String(body.content ?? '').trim()
+  const work_date = String(body.work_date ?? '').trim()
+  const zone_params = body.zone_params == null ? null : String(body.zone_params)
+  if (!project_name || !highway || !section || !stake || !work_date) {
+    return c.json({ error: '项目名称、高速公路、路段、桩号、施工日期为必填项' }, 400)
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(work_date)) {
+    return c.json({ error: '施工日期格式应为 YYYY-MM-DD' }, 400)
+  }
+  if (direction !== '' && direction !== 'up' && direction !== 'down') {
+    return c.json({ error: '方向只能是 up（上行）/ down（下行）' }, 400)
+  }
+  await c.env.DB.prepare(
+    `UPDATE records
+     SET project_name = ?, highway = ?, section = ?, work_location = ?, stake = ?, end_stake = ?,
+         direction = ?, content = ?, work_date = ?, zone_params = ?
+     WHERE id = ?`,
+  )
+    .bind(project_name, highway, section, work_location, stake, end_stake, direction, content, work_date, zone_params, id)
+    .run()
+  return c.json({ ok: true })
+})
+
 // Excel 批量导入。先完整校验，再用 D1 batch 一次性写入。
 app.post('/records/import', async (c) => {
   const body = await c.req.json().catch(() => null)

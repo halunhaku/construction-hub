@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { createRecord, getOptions } from '../api'
+import { createRecord, getOptions, getRecord, updateRecord } from '../api'
 import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { today } from '../util'
 import { validateZone } from '../zone/validation'
-import { defaults, parseStake, stake } from '../zone/utils'
+import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
 
 const DIRECTIONS = [
   { value: '', label: '不指定' },
@@ -13,7 +13,8 @@ const DIRECTIONS = [
   { value: 'down', label: '下行' },
 ]
 
-export default function NewRecordPage({ project }: { project?: string }) {
+export default function NewRecordPage({ project, id }: { project?: string; id?: string }) {
+  const editing = Boolean(id)
   const [form, setForm] = useState({
     project_name: project ?? '',
     highway: '',
@@ -35,6 +36,38 @@ export default function NewRecordPage({ project }: { project?: string }) {
   }>({ projects: [], highways: [], sections: [], contents: [] })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(editing)
+
+  // 编辑模式：加载记录并预填表单与布置参数
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    getRecord(id)
+      .then((record) => {
+        if (cancelled) return
+        setForm({
+          project_name: record.project_name,
+          highway: record.highway,
+          section: record.section,
+          work_location: record.work_location || '',
+          stake: record.stake,
+          end_stake: record.end_stake || '',
+          direction: record.direction || '',
+          content: record.content || '',
+          work_date: record.work_date,
+        })
+        setZone(record.zone_params ? parseZoneParams(record.zone_params) : null)
+        setLoading(false)
+      })
+      .catch((reason) => {
+        if (cancelled) return
+        setError(reason instanceof Error ? reason.message : '加载记录失败')
+        setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
 
   useEffect(() => {
     getOptions()
@@ -92,26 +125,41 @@ export default function NewRecordPage({ project }: { project?: string }) {
     setSaving(true)
     setError('')
     try {
-      const { id } = await createRecord({
+      const data = {
         ...form,
         zone_params: zone ? JSON.stringify(zone) : null,
-      })
-      window.location.hash = `#/record/${id}`
+      }
+      if (editing && id) {
+        await updateRecord(id, data)
+        window.location.hash = `#/record/${id}`
+      } else {
+        const { id: newId } = await createRecord(data)
+        window.location.hash = `#/record/${newId}`
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败')
       setSaving(false)
     }
   }
 
+  if (loading) {
+    return (
+      <div className="app-frame">
+        <AppHeader trail={['项目', '记录管理', '编辑记录']} />
+        <div className="page-loading">正在加载记录…</div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-frame">
-      <AppHeader trail={['项目', '记录管理', '新建记录']} />
+      <AppHeader trail={['项目', '记录管理', editing ? '编辑记录' : '新建记录']} />
       <div className="page">
       <header className="topbar">
-        <button className="btn" onClick={() => (window.location.hash = '#/')}>
+        <button className="btn" onClick={() => (window.location.hash = editing && id ? `#/record/${id}` : '#/')}>
           ← 返回
         </button>
-        <h1>新建施工记录</h1>
+        <h1>{editing ? '编辑施工记录' : '新建施工记录'}</h1>
         <span className="topbar-spacer" />
       </header>
 
@@ -230,13 +278,17 @@ export default function NewRecordPage({ project }: { project?: string }) {
 
         <h2 className="form-section-title">作业区布置</h2>
         <div className="card form-card">
-          <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked />
+          {zone ? (
+            <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked />
+          ) : (
+            <p className="inspector-empty">该记录暂无作业区布置图，保存后可在详情页创建。</p>
+          )}
         </div>
 
         {error && <div className="notice error">{error}</div>}
 
-        <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
-          {saving ? '保存中…' : '保存，并拍摄三照'}
+        <button type="submit" className="btn btn-primary btn-block" disabled={saving || loading}>
+          {saving ? '保存中…' : editing ? '保存修改' : '保存，并拍摄三照'}
         </button>
       </form>
       </div>

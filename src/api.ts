@@ -108,6 +108,14 @@ export function createRecord(data: RecordForm): Promise<{ id: string }> {
   })
 }
 
+export function updateRecord(id: string, data: RecordForm): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
 export function importRecords(
   records: ImportRecordForm[],
 ): Promise<{ count: number; ids: string[] }> {

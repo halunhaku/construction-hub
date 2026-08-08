@@ -28,6 +28,9 @@ export default function App() {
   if (path === 'record' && id && sub === 'zone') {
     return <ZoneEditorPage id={decodeURIComponent(id)} />
   }
+  if (path === 'record' && id && sub === 'edit') {
+    return <NewRecordPage key={id} id={decodeURIComponent(id)} />
+  }
   if (path === 'record' && id) return <RecordPage id={decodeURIComponent(id)} />
   return <DashboardPage />
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { CalendarDays, CloudSun, Download, Edit3, ImagePlus, MapPin, MoreHorizontal, Trash2 } from 'lucide-react'
+import { CalendarDays, CloudSun, Download, Edit3, ImagePlus, MapPin, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   deletePhoto,
   deleteRecord,
@@ -301,6 +301,9 @@ export default function RecordPage({ id }: { id: string }) {
             <div className="workspace-actions">
               <button className="btn btn-secondary" onClick={() => void downloadAll()} disabled={downloading}>
                 <Download /> {downloading ? '打包中…' : '导出档案'}
+              </button>
+              <button className="btn" onClick={() => (window.location.hash = `#/record/${id}/edit`)}>
+                <Pencil /> 编辑
               </button>
               <button className="btn btn-primary" onClick={() => (window.location.hash = `#/record/${id}/zone`)}>
                 <Edit3 /> {zoneParams ? '编辑布置' : '创建布置'}
