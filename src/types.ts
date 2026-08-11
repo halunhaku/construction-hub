@@ -79,11 +79,8 @@ export interface ZoneItem {
   updated_at: string
 }
 
-/** 新建/编辑布控区域的提交表单 */
+/** 新建/编辑布控区域的提交表单（独立页面只做布置图，不含项目信息） */
 export interface ZoneFormData {
-  project_name: string
-  highway: string
-  section: string
   zone: ZoneParams
 }
 

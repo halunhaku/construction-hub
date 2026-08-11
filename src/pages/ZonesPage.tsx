@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarClock, ChevronRight, MapPin, Plus, Search, TrafficCone } from 'lucide-react'
+import { CalendarClock, ChevronRight, Plus, Search, TrafficCone } from 'lucide-react'
 import { listZones } from '../api'
 import AppHeader from '../components/AppHeader'
 import { directionLabel, type ZoneItem } from '../types'
@@ -29,9 +29,7 @@ export default function ZonesPage() {
   const visible = useMemo(() => {
     const keyword = search.trim().toLowerCase()
     if (!keyword) return zones
-    return zones.filter((z) =>
-      `${z.project_name} ${z.highway} ${z.section} ${z.stake}`.toLowerCase().includes(keyword),
-    )
+    return zones.filter((z) => `${z.stake} ${rangeLabel(z)}`.toLowerCase().includes(keyword))
   }, [zones, search])
 
   return (
@@ -60,7 +58,7 @@ export default function ZonesPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="搜索项目名称、道路或桩号"
+              placeholder="搜索桩号"
             />
           </label>
         </section>
@@ -74,38 +72,30 @@ export default function ZonesPage() {
 
         {!loading && visible.length ? (
           <section className="zone-list" aria-label="布控区域列表">
-            {visible.map((zone) => {
-              const location = [zone.highway, zone.section].filter(Boolean).join(' · ') || '未填写道路与路段'
-              return (
-                <button
-                  key={zone.id}
-                  className="zone-list-item"
-                  onClick={() => (window.location.hash = `#/zones/${zone.id}`)}
-                >
-                  <span className="zone-list-icon">
-                    <TrafficCone aria-hidden="true" />
+            {visible.map((zone) => (
+              <button
+                key={zone.id}
+                className="zone-list-item"
+                onClick={() => (window.location.hash = `#/zones/${zone.id}`)}
+              >
+                <span className="zone-list-icon">
+                  <TrafficCone aria-hidden="true" />
+                </span>
+                <span className="zone-list-main">
+                  <strong>{rangeLabel(zone)}</strong>
+                  <span className="zone-list-range">
+                    {directionLabel(zone.direction) || '方向未指定'} · 总长 {zone.length.toLocaleString()}m
                   </span>
-                  <span className="zone-list-main">
-                    <strong>{zone.project_name}</strong>
-                    <span className="zone-list-range">
-                      {rangeLabel(zone)} · {directionLabel(zone.direction) || '方向未指定'} · 总长{' '}
-                      {zone.length.toLocaleString()}m
-                    </span>
-                    <small>
-                      <MapPin aria-hidden="true" />
-                      {location}
-                    </small>
-                  </span>
-                  <span className="zone-list-foot">
-                    <em>
-                      <CalendarClock aria-hidden="true" />
-                      {formatTime(zone.updated_at)}
-                    </em>
-                    <ChevronRight aria-hidden="true" />
-                  </span>
-                </button>
-              )
-            })}
+                </span>
+                <span className="zone-list-foot">
+                  <em>
+                    <CalendarClock aria-hidden="true" />
+                    {formatTime(zone.updated_at)}
+                  </em>
+                  <ChevronRight aria-hidden="true" />
+                </span>
+              </button>
+            ))}
           </section>
         ) : null}
       </main>

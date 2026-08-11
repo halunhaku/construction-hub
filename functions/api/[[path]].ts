@@ -447,14 +447,13 @@ app.get('/zones/:id', async (c) => {
   return c.json(zone)
 })
 
-// 新建布控区域
+// 新建布控区域（独立页面只做布置图：桩号/长度/方向/参数，不要求项目信息）
 app.post('/zones', async (c) => {
   const body = await c.req.json().catch(() => null)
   if (!body) return c.json({ error: '无效的请求体' }, 400)
   const project_name = String(body.project_name ?? '').trim()
   const highway = String(body.highway ?? '').trim()
   const section = String(body.section ?? '').trim()
-  if (!project_name) return c.json({ error: '项目名称为必填项' }, 400)
   const result = validateZoneObject(body.zone)
   if (!result.ok) return c.json({ error: result.error }, 400)
   const z = JSON.parse(result.params) as { start: string; work: number; direction: string; workSide: string }
@@ -478,7 +477,6 @@ app.put('/zones/:id', async (c) => {
   const project_name = String(body.project_name ?? '').trim()
   const highway = String(body.highway ?? '').trim()
   const section = String(body.section ?? '').trim()
-  if (!project_name) return c.json({ error: '项目名称为必填项' }, 400)
   const result = validateZoneObject(body.zone)
   if (!result.ok) return c.json({ error: result.error }, 400)
   const z = JSON.parse(result.params) as { start: string; work: number; direction: string; workSide: string }

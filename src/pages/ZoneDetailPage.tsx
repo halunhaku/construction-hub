@@ -34,7 +34,7 @@ export default function ZoneDetailPage({ id }: { id: string }) {
 
   function handleDelete() {
     if (!item) return
-    const ok = window.confirm(`确定删除「${item.project_name}」的布控区域（${item.stake}）吗？此操作不可恢复。`)
+    const ok = window.confirm(`确定删除布控区域（${item.stake}）吗？此操作不可恢复。`)
     if (!ok) return
     deleteZone(item.id)
       .then(() => {
@@ -45,8 +45,6 @@ export default function ZoneDetailPage({ id }: { id: string }) {
 
   if (error) return <div className="app-frame"><AppHeader trail={['首页', '布控区域', '详情']} /><div className="page notice error">{error}</div></div>
   if (!item || !params) return <div className="app-frame"><AppHeader trail={['首页', '布控区域', '详情']} /><div className="table-empty">正在加载布控区域…</div></div>
-
-  const location = [item.highway, item.section].filter(Boolean).join(' · ') || '未填写道路与路段'
 
   return (
     <div className="app-frame">
@@ -62,12 +60,11 @@ export default function ZoneDetailPage({ id }: { id: string }) {
 
         <div className="card form-card zone-detail-head">
           <div>
-            <strong>{item.project_name}</strong>
-            <p>
+            <strong>
               {item.stake}
-              {endStake ? ` — ${endStake}` : ''} · 总长 {item.length.toLocaleString()}m · 更新于 {formatTime(item.updated_at)}
-            </p>
-            <small>{location}</small>
+              {endStake ? ` — ${endStake}` : ''}
+            </strong>
+            <p>总长 {item.length.toLocaleString()}m · 更新于 {formatTime(item.updated_at)}</p>
           </div>
         </div>
 

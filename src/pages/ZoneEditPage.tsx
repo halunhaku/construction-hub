@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getOptions, createZone, getZone, updateZone } from '../api'
+import { createZone, getZone, updateZone } from '../api'
 import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
@@ -8,25 +8,10 @@ import { validateZone } from '../zone/validation'
 
 export default function ZoneEditPage({ id }: { id?: string }) {
   const editing = Boolean(id)
-  const [projectName, setProjectName] = useState('')
-  const [highway, setHighway] = useState('')
-  const [section, setSection] = useState('')
   const [zone, setZone] = useState<ZoneParams>({ ...defaults, start: '' })
-  const [options, setOptions] = useState<{
-    projects: string[]
-    highways: string[]
-    sections: string[]
-    contents: string[]
-  }>({ projects: [], highways: [], sections: [], contents: [] })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(editing)
-
-  useEffect(() => {
-    getOptions()
-      .then(setOptions)
-      .catch(() => undefined) // 选项加载失败不阻塞录入
-  }, [])
 
   // 编辑模式：加载布控区域并预填
   useEffect(() => {
@@ -35,9 +20,6 @@ export default function ZoneEditPage({ id }: { id?: string }) {
     getZone(id)
       .then((item) => {
         if (cancelled) return
-        setProjectName(item.project_name)
-        setHighway(item.highway || '')
-        setSection(item.section || '')
         setZone(parseZoneParams(item.zone_params) ?? { ...defaults, start: '' })
         setLoading(false)
       })
@@ -60,10 +42,6 @@ export default function ZoneEditPage({ id }: { id?: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const zoneErrors = validateZone(zone)
-    if (!projectName.trim()) {
-      setError('请填写项目名称')
-      return
-    }
     if (Object.keys(zoneErrors).length > 0) {
       const messages = [
         zoneErrors.start ? `起始桩号：${zoneErrors.start}` : '',
@@ -75,12 +53,7 @@ export default function ZoneEditPage({ id }: { id?: string }) {
     setSaving(true)
     setError('')
     try {
-      const data = {
-        project_name: projectName.trim(),
-        highway: highway.trim(),
-        section: section.trim(),
-        zone,
-      }
+      const data = { zone }
       const result = editing && id
         ? await updateZone(id, data).then(() => ({ id }))
         : await createZone(data)
@@ -108,53 +81,6 @@ export default function ZoneEditPage({ id }: { id?: string }) {
 
         {!loading && (
           <form className="form" onSubmit={submit}>
-            <h2 className="form-section-title">基本信息</h2>
-            <div className="card form-card">
-              <label>
-                项目名称 <b className="req">*</b>
-                <input
-                  required
-                  list="ze-project-options"
-                  value={projectName}
-                  onChange={(event) => setProjectName(event.target.value)}
-                  placeholder="选择或输入项目名称"
-                />
-              </label>
-              <datalist id="ze-project-options">
-                {options.projects.map((item) => (
-                  <option key={item} value={item} />
-                ))}
-              </datalist>
-              <label>
-                高速公路
-                <input
-                  list="ze-highway-options"
-                  value={highway}
-                  onChange={(event) => setHighway(event.target.value)}
-                  placeholder="例如：S50 太临高速太佳段"
-                />
-              </label>
-              <datalist id="ze-highway-options">
-                {options.highways.map((item) => (
-                  <option key={item} value={item} />
-                ))}
-              </datalist>
-              <label>
-                路段
-                <input
-                  list="ze-section-options"
-                  value={section}
-                  onChange={(event) => setSection(event.target.value)}
-                  placeholder="例如：K96+350 段"
-                />
-              </label>
-              <datalist id="ze-section-options">
-                {options.sections.map((item) => (
-                  <option key={item} value={item} />
-                ))}
-              </datalist>
-            </div>
-
             <h2 className="form-section-title">作业区布置</h2>
             <div className="card form-card">
               <div className="form-row">
