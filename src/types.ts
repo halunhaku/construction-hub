@@ -63,6 +63,30 @@ export interface ImportRecordForm extends RecordForm {
   source_row: number
 }
 
+/** 独立布控区域（不依赖施工记录，首页单独入口管理） */
+export interface ZoneItem {
+  id: string
+  project_name: string
+  highway: string
+  section: string
+  stake: string
+  length: number
+  direction: string
+  work_location: string
+  zone_params: string // JSON.stringify(ZoneParams)
+  record_id: string | null // 预留：将来关联施工记录
+  created_at: string
+  updated_at: string
+}
+
+/** 新建/编辑布控区域的提交表单 */
+export interface ZoneFormData {
+  project_name: string
+  highway: string
+  section: string
+  zone: ZoneParams
+}
+
 export function directionLabel(d: string): string {
   return d === 'up' ? '上行' : d === 'down' ? '下行' : ''
 }

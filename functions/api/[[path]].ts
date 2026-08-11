@@ -30,6 +30,48 @@ interface RecordRow {
   taken_at: string | null
 }
 
+interface ZoneRow {
+  id: string
+  project_name: string
+  highway: string
+  section: string
+  stake: string
+  length: number
+  direction: string
+  work_location: string
+  zone_params: string
+  record_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * 校验作业区布置参数对象，返回 JSON 字符串；非法时返回错误信息。
+ * 供记录布置图（PUT /records/:id/zone）与独立布控区域（zones CRUD）共用。
+ */
+function validateZoneObject(zone: unknown): { ok: true; params: string } | { ok: false; error: string } {
+  if (typeof zone !== 'object' || zone === null || Array.isArray(zone)) {
+    return { ok: false, error: 'zone 必须是对象' }
+  }
+  const z = zone as Record<string, unknown>
+  const required: [string, string][] = [
+    ['start', 'string'], ['work', 'number'], ['direction', 'string'],
+    ['workSide', 'string'], ['warning', 'number'], ['taper', 'number'],
+    ['buffer', 'number'], ['downstream', 'number'], ['terminal', 'number'],
+    ['speed', 'number'], ['coneGap', 'number'],
+  ]
+  for (const [key, type] of required) {
+    if (typeof z[key] !== type) return { ok: false, error: `zone.${key} 必须是 ${type}` }
+  }
+  if (z.direction !== 'up' && z.direction !== 'down') {
+    return { ok: false, error: 'zone.direction 必须是 up / down' }
+  }
+  if (z.workSide !== 'roadside' && z.workSide !== 'median') {
+    return { ok: false, error: 'zone.workSide 必须是 roadside / median' }
+  }
+  return { ok: true, params: JSON.stringify(z) }
+}
+
 function toRecord(rows: RecordRow[]) {
   if (rows.length === 0) return null
   const photos: Record<Phase, { id: string; file_key: string; taken_at: string }[]> = {
@@ -234,26 +276,9 @@ app.put('/records/:id/zone', async (c) => {
 
   let zone_params: string | null = null
   if (body.zone != null) {
-    const z = body.zone as Record<string, unknown>
-    if (typeof z !== 'object' || Array.isArray(z)) {
-      return c.json({ error: 'zone 必须是对象或 null' }, 400)
-    }
-    const required: [string, string][] = [
-      ['start', 'string'], ['work', 'number'], ['direction', 'string'],
-      ['workSide', 'string'], ['warning', 'number'], ['taper', 'number'],
-      ['buffer', 'number'], ['downstream', 'number'], ['terminal', 'number'],
-      ['speed', 'number'], ['coneGap', 'number'],
-    ]
-    for (const [key, type] of required) {
-      if (typeof z[key] !== type) return c.json({ error: `zone.${key} 必须是 ${type}` }, 400)
-    }
-    if (z.direction !== 'up' && z.direction !== 'down') {
-      return c.json({ error: 'zone.direction 必须是 up / down' }, 400)
-    }
-    if (z.workSide !== 'roadside' && z.workSide !== 'median') {
-      return c.json({ error: 'zone.workSide 必须是 roadside / median' }, 400)
-    }
-    zone_params = JSON.stringify(z)
+    const result = validateZoneObject(body.zone)
+    if (!result.ok) return c.json({ error: result.error }, 400)
+    zone_params = result.params
   }
 
   await c.env.DB.prepare('UPDATE records SET zone_params = ?, updated_at = datetime(\'now\') WHERE id = ?')
@@ -395,6 +420,86 @@ app.get('/photos/:photoId', async (c) => {
   headers.set('etag', obj.httpEtag)
   headers.set('Cache-Control', 'public, max-age=86400')
   return new Response(obj.body, { headers })
+})
+
+// ─────────────────────────────────────────────
+// 独立布控区域（zones）：不依赖施工记录，首页单独入口
+// 列表列 stake/length/direction/work_location 由 zone_params 同步派生，供列表展示与筛选
+// ─────────────────────────────────────────────
+
+const ZONE_SELECT = `
+  SELECT id, project_name, highway, section, stake, length, direction, work_location,
+         zone_params, record_id, created_at, updated_at
+  FROM zones
+`
+
+// 列表（按更新时间倒序）
+app.get('/zones', async (c) => {
+  const { results } = await c.env.DB.prepare(`${ZONE_SELECT} ORDER BY updated_at DESC, created_at DESC`).all<ZoneRow>()
+  return c.json(results)
+})
+
+// 单条详情
+app.get('/zones/:id', async (c) => {
+  const id = c.req.param('id')
+  const zone = await c.env.DB.prepare(`${ZONE_SELECT} WHERE id = ?`).bind(id).first<ZoneRow>()
+  if (!zone) return c.json({ error: '布控区域不存在' }, 404)
+  return c.json(zone)
+})
+
+// 新建布控区域
+app.post('/zones', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  if (!body) return c.json({ error: '无效的请求体' }, 400)
+  const project_name = String(body.project_name ?? '').trim()
+  const highway = String(body.highway ?? '').trim()
+  const section = String(body.section ?? '').trim()
+  if (!project_name) return c.json({ error: '项目名称为必填项' }, 400)
+  const result = validateZoneObject(body.zone)
+  if (!result.ok) return c.json({ error: result.error }, 400)
+  const z = JSON.parse(result.params) as { start: string; work: number; direction: string; workSide: string }
+  const id = crypto.randomUUID()
+  await c.env.DB.prepare(
+    `INSERT INTO zones (id, project_name, highway, section, stake, length, direction, work_location, zone_params)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(id, project_name, highway, section, z.start, z.work, z.direction, z.workSide, result.params)
+    .run()
+  return c.json({ id }, 201)
+})
+
+// 更新布控区域
+app.put('/zones/:id', async (c) => {
+  const id = c.req.param('id')
+  const existing = await c.env.DB.prepare('SELECT id FROM zones WHERE id = ?').bind(id).first()
+  if (!existing) return c.json({ error: '布控区域不存在' }, 404)
+  const body = await c.req.json().catch(() => null)
+  if (!body) return c.json({ error: '无效的请求体' }, 400)
+  const project_name = String(body.project_name ?? '').trim()
+  const highway = String(body.highway ?? '').trim()
+  const section = String(body.section ?? '').trim()
+  if (!project_name) return c.json({ error: '项目名称为必填项' }, 400)
+  const result = validateZoneObject(body.zone)
+  if (!result.ok) return c.json({ error: result.error }, 400)
+  const z = JSON.parse(result.params) as { start: string; work: number; direction: string; workSide: string }
+  await c.env.DB.prepare(
+    `UPDATE zones
+     SET project_name = ?, highway = ?, section = ?, stake = ?, length = ?, direction = ?,
+         work_location = ?, zone_params = ?, updated_at = datetime('now')
+     WHERE id = ?`,
+  )
+    .bind(project_name, highway, section, z.start, z.work, z.direction, z.workSide, result.params, id)
+    .run()
+  return c.json({ ok: true })
+})
+
+// 删除布控区域
+app.delete('/zones/:id', async (c) => {
+  const id = c.req.param('id')
+  const existing = await c.env.DB.prepare('SELECT id FROM zones WHERE id = ?').bind(id).first()
+  if (!existing) return c.json({ error: '布控区域不存在' }, 404)
+  await c.env.DB.prepare('DELETE FROM zones WHERE id = ?').bind(id).run()
+  return c.json({ ok: true })
 })
 
 export const onRequest = handle(app)

@@ -5,7 +5,10 @@ import HelpPage from './pages/HelpPage'
 import ListPage from './pages/ListPage'
 import NewRecordPage from './pages/NewRecordPage'
 import RecordPage from './pages/RecordPage'
+import ZoneDetailPage from './pages/ZoneDetailPage'
+import ZoneEditPage from './pages/ZoneEditPage'
 import ZoneEditorPage from './pages/ZoneEditorPage'
+import ZonesPage from './pages/ZonesPage'
 
 function useHashRoute() {
   const [hash, setHash] = useState(window.location.hash)
@@ -32,5 +35,9 @@ export default function App() {
     return <NewRecordPage key={id} id={decodeURIComponent(id)} />
   }
   if (path === 'record' && id) return <RecordPage id={decodeURIComponent(id)} />
+  if (path === 'zones' && id === 'new') return <ZoneEditPage key="new" />
+  if (path === 'zones' && id && sub === 'edit') return <ZoneEditPage key={id} id={decodeURIComponent(id)} />
+  if (path === 'zones' && id) return <ZoneDetailPage id={decodeURIComponent(id)} />
+  if (path === 'zones') return <ZonesPage />
   return <DashboardPage />
 }

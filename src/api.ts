@@ -1,4 +1,4 @@
-import type { ImportRecordForm, Phase, RecordForm, RecordItem, ZoneParams } from './types'
+import type { ImportRecordForm, Phase, RecordForm, RecordItem, ZoneFormData, ZoneItem, ZoneParams } from './types'
 
 const BASE = '/api'
 
@@ -128,6 +128,36 @@ export function importRecords(
 
 export function deleteRecord(id: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// ── 独立布控区域（zones）──
+
+export function listZones(): Promise<ZoneItem[]> {
+  return request<ZoneItem[]>('/zones')
+}
+
+export function getZone(id: string): Promise<ZoneItem> {
+  return request<ZoneItem>(`/zones/${encodeURIComponent(id)}`)
+}
+
+export function createZone(data: ZoneFormData): Promise<{ id: string }> {
+  return request<{ id: string }>('/zones', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function updateZone(id: string, data: ZoneFormData): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/zones/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+export function deleteZone(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/zones/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 /** 保存（zone 非 null）或清除（zone 为 null）记录的作业区布置参数 */

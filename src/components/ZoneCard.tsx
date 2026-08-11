@@ -5,11 +5,13 @@ import { buildZones, stake } from '../zone/utils'
 import { buildExportPage, downloadJpg, downloadPng, downloadPdf, signSchedule } from '../zone/export'
 import type { ZoneParams } from '../types'
 
-export default function ZoneCard({ params, onEdit, onClear, workspace = false }: {
+export default function ZoneCard({ params, onEdit, onClear, workspace = false, clearLabel = '清除' }: {
   params: ZoneParams
   onEdit: () => void
   onClear: () => void
   workspace?: boolean
+  /** 清除按钮文案：记录语境默认「清除」，独立布控区域传「删除布控」 */
+  clearLabel?: string
 }) {
   const diagramRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState(false)
@@ -59,7 +61,7 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false }:
             <Pencil /> 编辑
           </button>
           <button className="btn btn-danger" onClick={onClear}>
-            <Trash2 /> 清除
+            <Trash2 /> {clearLabel}
           </button>
         </div>
       </div>
