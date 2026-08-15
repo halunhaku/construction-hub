@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Direction, SignType, WorkSide, Zone, ZoneBlock } from './types'
-import { stake, warningSignOffsets } from './utils'
+import { mirrorZones, stake, warningSignOffsets } from './utils'
 
 /* ── 子组件 ──────────────────────────────────────────── */
 
@@ -48,40 +48,26 @@ function RoadSign({ x, y = 48, type }: { x: number; y?: number; type: SignType }
   )
 }
 
-/* ── 主组件 ──────────────────────────────────────────── */
+/* ── 单车道渲染（单侧 / 双侧各车道共用） ────────────── */
 
-export function RoadDiagram({ zones, direction, workSide, zoom, coneGap }: {
-  zones: Zone[]
-  direction: Direction
-  workSide: WorkSide
-  zoom: number
+interface LaneGeom {
+  upper: boolean
+  zoneY: number
+  workBoundaryY: number
+  guardrailY: number
+  signY: number
+  oppositeSignY: number
+}
+
+function Lane({ geom, blocks, coneGap, workSide, lane }: {
+  geom: LaneGeom
+  blocks: ZoneBlock[]
   coneGap: number
-}) {
-  const total = zones.reduce((s, z) => s + z.length, 0)
-  const left = 68
-  const width = 1090 * zoom
-  // 色块最小宽度 62px：保证 5 字 × 9px 字号 + 框边距（45+14=59）在任何参数下都能完整放下，字号恒为 9 不缩水
-  const widths = zones.map(z => Math.max(62, z.length / total * width))
-  const roadRight = left + widths.reduce((s, w) => s + w, 0)
-  const upper = direction === 'up'
-
-  let cursor = upper ? roadRight : left
-  const blocks: ZoneBlock[] = zones.map((z, i) => {
-    const w = widths[i]!
-    const bx = upper ? cursor - w : cursor
-    cursor += upper ? -w : w
-    return { ...z, x: bx, w }
-  })
-
-  const zoneY = upper ? (workSide === 'median' ? 133 : 80) : (workSide === 'median' ? 204 : 257)
+  workSide: WorkSide
+  lane: 'up' | 'down'
+}): ReactElement {
+  const { upper, zoneY, workBoundaryY, guardrailY, signY, oppositeSignY } = geom
   const zoneHeight = 53
-  const roadsideGuardrailY = upper ? 80 : 310
-  const medianGuardrailY = upper ? 186 : 204
-  const guardrailY = workSide === 'median' ? medianGuardrailY : roadsideGuardrailY
-  const workBoundaryY = upper ? 133 : 257
-  const signY = workSide === 'median' ? medianGuardrailY : roadsideGuardrailY
-  const oppositeSignY = workSide === 'median' ? roadsideGuardrailY : medianGuardrailY
-
   const along = (b: ZoneBlock, t: number) => b.x + (upper ? 1 - t : t) * b.w
   const closedSide = Math.sign(zoneY + zoneHeight / 2 - workBoundaryY)
   // 锥桶贴近施工边界线（锥桶缩小后 2px 微偏即可，视觉上贴线）
@@ -100,7 +86,7 @@ export function RoadDiagram({ zones, direction, workSide, zoom, coneGap }: {
         : bi === 4
           ? coneBoundaryY + (guardrailY - coneBoundaryY) * t
           : coneBoundaryY
-      cones.push(<Cone key={`${bi}-${i}`} x={along(b, t)} y={yy} />)
+      cones.push(<Cone key={`${lane}-${bi}-${i}`} x={along(b, t)} y={yy} />)
     }
   })
 
@@ -111,15 +97,15 @@ export function RoadDiagram({ zones, direction, workSide, zoom, coneGap }: {
   }
   const warningX = (offset: number) =>
     warnLen > 0 && offset <= warnLen ? along(blocks[0]!, offset / warnLen) : null
-  const wx0 = warningX(0)
   const wx1200 = warningX(1200)
+  const wx0 = warningX(0)
   const warningSigns = warningSignOffsets
     .filter(offset => offset <= warnLen)
     .map(offset => ({ x: warningX(offset)!, type: warnTypes[offset]! }))
   const terminalEnd = upper ? blocks[5]!.x : blocks[5]!.x + blocks[5]!.w
+  // 车道远端（桩号最小端）边界：上行取警告区起点，下行取终止区终点
+  const laneRightEdge = upper ? blocks[0]!.x + blocks[0]!.w : blocks[5]!.x + blocks[5]!.w
 
-  const viewTop = 0
-  const viewBottom = 430
   const zoneBadgeY = upper ? 397 : 8
   const zoneBadgeTextY = zoneBadgeY + 15
   const dimensionY = upper ? 365 : 46
@@ -127,8 +113,120 @@ export function RoadDiagram({ zones, direction, workSide, zoom, coneGap }: {
   const stakeTextY = upper ? 385 : 58
   const guideStartY = upper ? 110 : 38
   const guideEndY = upper ? 352 : 310
+
+  return (
+    <g>
+      {blocks.map(b => (
+        <g key={`${lane}-${b.key}`}>
+          <rect className="zoneColor" x={b.x} y={zoneY} width={b.w} height={zoneHeight} fill={b.color} opacity=".75" />
+          <line x1={b.x} y1={guideStartY} x2={b.x} y2={guideEndY} stroke="#c7c7cc" />
+          <line x1={b.x} y1={dimensionY} x2={b.x + b.w} y2={dimensionY} stroke="#6e6e73" />
+          <path d={`M${b.x} ${dimensionY}l8 -4v8zM${b.x + b.w} ${dimensionY}l-8 -4v8z`} fill="#6e6e73" />
+          <text className="lengthLabel" x={b.x + b.w / 2} y={dimensionTextY} textAnchor="middle" fontSize="11" fontWeight="700" fill="#3a3a3c">{b.length}m</text>
+          {/* 窄分区（双侧占路时下游/终止区约 10px）省略桩号，避免与相邻桩号重叠 */}
+          {b.w >= 48 ? (
+            <text className="stakeLabel" x={b.x} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">{stake(upper ? b.end : b.start)}</text>
+          ) : null}
+          <ZoneBadge block={b} y={zoneBadgeY} textY={zoneBadgeTextY} />
+        </g>
+      ))}
+      <line x1={laneRightEdge} y1={guideStartY} x2={laneRightEdge} y2={upper ? 391 : 66} stroke="#c7c7cc" />
+      <text className="stakeLabel" x={laneRightEdge} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">
+        {stake(upper ? blocks[0]!.start : blocks[5]!.end)}
+      </text>
+      {cones}
+      {/* 缓冲区入口：作业区长度标志（路栏/导向标志位置见表格） */}
+      <RoadSign x={along(blocks[2]!, 0)} y={signY} type="length" />
+      {warningSigns.map(s => (
+        <RoadSign key={s.type} x={s.x} y={signY} type={s.type} />
+      ))}
+      {wx1200 != null && <RoadSign x={wx1200} y={oppositeSignY} type="noOvertake" />}
+      {wx0 != null && <RoadSign x={wx0} y={oppositeSignY} type="construction1600" />}
+      <RoadSign x={terminalEnd} y={signY} type="end60" />
+      <RoadSign x={terminalEnd} y={oppositeSignY} type="endOvertake" />
+    </g>
+  )
+}
+
+/* ── 主组件 ──────────────────────────────────────────── */
+
+export function RoadDiagram({ zones, direction, workSide, doubleSide = false, zoom, coneGap }: {
+  zones: Zone[]
+  direction: Direction
+  workSide: WorkSide
+  /** 双侧占路：上/下行同时布控（仅中央分隔带施工可用），两车道 180° 对称 */
+  doubleSide?: boolean
+  zoom: number
+  coneGap: number
+}) {
+  const upper = direction === 'up'
+  const total = zones.reduce((s, z) => s + z.length, 0)
+  const left = 68
+
+  // 每条车道独立几何：分区条位置/封闭边界/护栏/标志位
+  let lanes: { geom: LaneGeom; blocks: ZoneBlock[]; lane: 'up' | 'down' }[]
+  let roadRight: number
+
+  if (doubleSide) {
+    // 双侧：两车道共用同一桩号轴（作业区桩号范围重合），车道间等比例缩放
+    const mirrored = mirrorZones(zones, direction)
+    const all = [...zones, ...mirrored]
+    let minStake = Infinity
+    let maxStake = -Infinity
+    for (const z of all) {
+      minStake = Math.min(minStake, z.start, z.end)
+      maxStake = Math.max(maxStake, z.start, z.end)
+    }
+    const span = Math.max(1, maxStake - minStake)
+    const width = 1090 * zoom * (span / total)
+    const ppm = width / span
+    const xOf = (m: number) => left + (maxStake - m) * ppm
+    const toBlocks = (laneZones: Zone[]): ZoneBlock[] =>
+      laneZones.map(z => ({ ...z, x: xOf(Math.max(z.start, z.end)), w: Math.abs(z.end - z.start) * ppm }))
+    const geomFor = (up: boolean): LaneGeom => ({
+      upper: up,
+      zoneY: up ? 133 : 204,
+      workBoundaryY: up ? 133 : 257,
+      guardrailY: up ? 186 : 204,
+      signY: up ? 186 : 204,
+      oppositeSignY: up ? 80 : 310,
+    })
+    lanes = [
+      { geom: geomFor(upper), blocks: toBlocks(zones), lane: upper ? 'up' : 'down' },
+      { geom: geomFor(!upper), blocks: toBlocks(mirrored), lane: upper ? 'down' : 'up' },
+    ]
+    roadRight = left + width
+  } else {
+    // 单侧：保持原有等比例布局
+    const width = 1090 * zoom
+    // 色块最小宽度 62px：保证 5 字 × 9px 字号 + 框边距（45+14=59）在任何参数下都能完整放下，字号恒为 9 不缩水
+    const widths = zones.map(z => Math.max(62, z.length / total * width))
+    roadRight = left + widths.reduce((s, w) => s + w, 0)
+    let cursor = upper ? roadRight : left
+    const blocks: ZoneBlock[] = zones.map((z, i) => {
+      const w = widths[i]!
+      const bx = upper ? cursor - w : cursor
+      cursor += upper ? -w : w
+      return { ...z, x: bx, w }
+    })
+    const zoneY = upper ? (workSide === 'median' ? 133 : 80) : (workSide === 'median' ? 204 : 257)
+    const roadsideGuardrailY = upper ? 80 : 310
+    const medianGuardrailY = upper ? 186 : 204
+    const guardrailY = workSide === 'median' ? medianGuardrailY : roadsideGuardrailY
+    const workBoundaryY = upper ? 133 : 257
+    const signY = workSide === 'median' ? medianGuardrailY : roadsideGuardrailY
+    const oppositeSignY = workSide === 'median' ? roadsideGuardrailY : medianGuardrailY
+    lanes = [{
+      geom: { upper, zoneY, workBoundaryY, guardrailY, signY, oppositeSignY },
+      blocks,
+      lane: upper ? 'up' : 'down',
+    }]
+  }
+
   const svgWidth = Math.max(1225, roadRight + 80)
   const minWidth = Math.max(1120, roadRight + 60)
+  const viewTop = 0
+  const viewBottom = 430
 
   return (
     <div className="diagramScroll">
@@ -158,33 +256,11 @@ export function RoadDiagram({ zones, direction, workSide, zoom, coneGap }: {
             ))}
           </g>
         ))}
-        {blocks.map(b => (
-          <g key={b.key}>
-            <rect className="zoneColor" x={b.x} y={zoneY} width={b.w} height={zoneHeight} fill={b.color} opacity=".75" />
-            <line x1={b.x} y1={guideStartY} x2={b.x} y2={guideEndY} stroke="#c7c7cc" />
-            <line x1={b.x} y1={dimensionY} x2={b.x + b.w} y2={dimensionY} stroke="#6e6e73" />
-            <path d={`M${b.x} ${dimensionY}l8 -4v8zM${b.x + b.w} ${dimensionY}l-8 -4v8z`} fill="#6e6e73" />
-            <text className="lengthLabel" x={b.x + b.w / 2} y={dimensionTextY} textAnchor="middle" fontSize="11" fontWeight="700" fill="#3a3a3c">{b.length}m</text>
-            <text className="stakeLabel" x={b.x} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">{stake(upper ? b.end : b.start)}</text>
-            <ZoneBadge block={b} y={zoneBadgeY} textY={zoneBadgeTextY} />
-          </g>
+        {lanes.map(l => (
+          <Lane key={l.lane} geom={l.geom} blocks={l.blocks} coneGap={coneGap} workSide={workSide} lane={l.lane} />
         ))}
-        <line x1={roadRight} y1={guideStartY} x2={roadRight} y2={upper ? 391 : 66} stroke="#c7c7cc" />
-        <text className="stakeLabel" x={roadRight} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">
-          {stake(upper ? zones[0]!.start : zones.at(-1)!.end)}
-        </text>
-        {cones}
-        {/* 缓冲区入口：作业区长度标志（路栏/导向标志位置见表格） */}
-        <RoadSign x={along(blocks[2]!, 0)} y={signY} type="length" />
         <text x="48" y="137" fill="#fff" fontSize="12" fontWeight="700">上行 ←</text>
         <text x="48" y="261" fill="#fff" fontSize="12" fontWeight="700">下行 →</text>
-        {warningSigns.map(s => (
-          <RoadSign key={s.type} x={s.x} y={signY} type={s.type} />
-        ))}
-        {wx1200 != null && <RoadSign x={wx1200} y={oppositeSignY} type="noOvertake" />}
-        {wx0 != null && <RoadSign x={wx0} y={oppositeSignY} type="construction1600" />}
-        <RoadSign x={terminalEnd} y={signY} type="end60" />
-        <RoadSign x={terminalEnd} y={oppositeSignY} type="endOvertake" />
       </svg>
     </div>
   )

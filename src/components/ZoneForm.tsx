@@ -111,7 +111,7 @@ export default function ZoneForm({
                   role="radio"
                   aria-checked={form.workSide === 'roadside'}
                   className={form.workSide === 'roadside' ? 'active' : ''}
-                  onClick={() => set('workSide', 'roadside')}
+                  onClick={() => onChange({ ...form, workSide: 'roadside', doubleSide: false })}
                 >
                   路侧
                 </button>
@@ -126,6 +126,33 @@ export default function ZoneForm({
                 </button>
               </div>
             </div>
+            {/* 双侧占路：仅中央分隔带施工可选（上/下行同时布控，180° 对称） */}
+            {form.workSide === 'median' && (
+              <div className="field-block">
+                <span className="field-label">占路方式</span>
+                <div className="seg" role="radiogroup" aria-label="占路方式">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!form.doubleSide}
+                    className={!form.doubleSide ? 'active' : ''}
+                    onClick={() => set('doubleSide', false)}
+                  >
+                    单侧占路
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={form.doubleSide}
+                    className={form.doubleSide ? 'active' : ''}
+                    onClick={() => set('doubleSide', true)}
+                  >
+                    双侧占路
+                  </button>
+                </div>
+              </div>
+            )}
+            {errors.workSide && <p className="field-error">{errors.workSide}</p>}
           </div>
 
           <div className="form-row">
@@ -217,13 +244,15 @@ export default function ZoneForm({
           <div className="zone-preview-inline">
             <p className="zone-meta">
               {form.start} · {form.direction === 'up' ? '上行' : '下行'} ·{' '}
-              {form.workSide === 'median' ? '中央分隔带' : '路侧'} · 总长{' '}
+              {form.workSide === 'median' ? '中央分隔带' : '路侧'}
+              {form.doubleSide ? ' · 双侧占路' : ''} · 总长{' '}
               {total.toLocaleString()}m
             </p>
             <RoadDiagram
               zones={zones}
               direction={form.direction}
               workSide={form.workSide}
+              doubleSide={form.doubleSide}
               zoom={1}
               coneGap={form.coneGap}
             />

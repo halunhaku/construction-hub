@@ -10,6 +10,8 @@ export interface Params {
   work: number;
   direction: Direction;
   workSide: WorkSide;
+  /** 双侧占路：仅中央分隔带施工可用，上/下行同时布控（180°对称） */
+  doubleSide: boolean;
   warning: number;
   taper: number;
   buffer: number;

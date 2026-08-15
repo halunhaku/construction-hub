@@ -1,5 +1,5 @@
 import type { Zone, TableConfig, Direction, Params } from './types';
-import { stake, warningSignOffsets, xmlText } from './utils';
+import { mirrorZones, stake, warningSignOffsets, xmlText } from './utils';
 
 /* ── 标志牌时刻表 ────────────────────────────────────── */
 
@@ -12,10 +12,11 @@ const WARN_DESCS: Record<number, string> = {
   800: '距警告区起点 800m', 1000: '距警告区起点 1000m', 1200: '距警告区起点 1200m',
 };
 
-export function signSchedule(zones: Zone[], _direction: Direction): [number, string, string, string][] {
+/** 标志项目：名称 + 桩号（数字）+ 位置说明；双侧导出一行并排两车道桩号 */
+function signRowsOf(zones: Zone[]): [string, number, string][] {
   const at = (zone: Zone, offset: number) => zone.start + Math.sign(zone.end - zone.start) * offset;
   const warnLen = zones[0]!.length;
-  const items: [string, number, string][] = [
+  return [
     // 偏移超出警告区实际长度的标志不设置，避免出现在不存在的位置
     ...warningSignOffsets
       .filter(offset => offset <= warnLen)
@@ -24,7 +25,21 @@ export function signSchedule(zones: Zone[], _direction: Direction): [number, str
     ['路栏 / 作业区长度', zones[2]!.start, '缓冲区入口'],
     ['解除限速 60 / 禁止超车', zones[5]!.end, '终止区终点'],
   ];
-  return items.map((item, index) => [index + 1, item[0], stake(item[1]), item[2]]);
+}
+
+export function signSchedule(zones: Zone[], _direction: Direction): [number, string, string, string][] {
+  return signRowsOf(zones).map((item, index) => [index + 1, item[0], stake(item[1]), item[2]]);
+}
+
+/** 双侧占路：主方向 + 镜像对向车道的标志时刻表（位置说明前缀上行/下行，序号连续） */
+export function signScheduleDouble(zones: Zone[], direction: Direction): [number, string, string, string][] {
+  const primaryDir = direction === 'down' ? '下行' : '上行'
+  const mirrorDir = primaryDir === '上行' ? '下行' : '上行'
+  const merged = [
+    ...signSchedule(zones, direction).map((r) => [r[1], r[2], `${primaryDir} · ${r[3]}`] as [string, string, string]),
+    ...signSchedule(mirrorZones(zones, direction), direction).map((r) => [r[1], r[2], `${mirrorDir} · ${r[3]}`] as [string, string, string]),
+  ]
+  return merged.map((r, i) => [i + 1, r[0], r[1], r[2]])
 }
 
 /* ── 导出表格生成 ────────────────────────────────────── */
@@ -71,6 +86,18 @@ export function exportTable({
 }
 
 /* ── 通用 SVG→Canvas 渲染 ────────────────────────────── */
+
+/**
+ * 提取布置图 SVG 快照用于导出：剥离布局样式（min-width）。
+ * roadSvg 为横向滚动带内联 min-width，直接序列化 innerHTML 会把
+ * `style="min-width:1902px"` 带进 A4 图纸，CSS min-width 覆盖嵌套 SVG
+ * 的 width 属性后视口被撑破，图纸右侧大段被裁切（单侧/双侧均受影响）。
+ */
+export function snapshotDiagram(svg: SVGSVGElement): { svgViewBox: string; svgInner: string } {
+  const clone = svg.cloneNode(true) as SVGSVGElement
+  clone.removeAttribute('style')
+  return { svgViewBox: clone.getAttribute('viewBox') ?? '', svgInner: clone.innerHTML }
+}
 
 function renderSvg(
   page: string,
@@ -260,32 +287,49 @@ export interface ExportPageInput {
   signRows: [number, string, string, string][]
   /** 布置总长度（米） */
   total: number
+  /** 双侧占路：分区表/时刻表改双列（上行/下行桩号并排），避免行数翻倍超出 A4 高度 */
+  doubleSide?: boolean
 }
 
 /** 组装 A4 横向（297×210mm）图纸页：标题 + 道路图 + 两张明细表 + 页脚 */
-export function buildExportPage({ svgViewBox, svgInner, params, zones, signRows, total }: ExportPageInput): string {
-  const zoneRows: string[][] = zones.map((z, i) => [
-    String(i + 1), z.name, `${z.length}m`, stake(z.start), stake(z.end),
-  ])
-  const exportSignRows: string[][] = signRows.map(r => [
-    String(r[0]), r[1], r[2], r[3],
-  ])
+export function buildExportPage({ svgViewBox, svgInner, params, zones, signRows, total, doubleSide = false }: ExportPageInput): string {
+  const primaryDir = params.direction === 'down' ? '下行' : '上行'
+  const mirrorDir = primaryDir === '上行' ? '下行' : '上行'
+  // 双侧占路：两车道分区行数翻倍会超出 A4 高度被裁，改为每区一行、
+  // 上行/下行起止桩号并排；时刻表同理（上行桩号/下行桩号两列）。
+  const mirrored = doubleSide ? mirrorZones(zones, params.direction) : null
+  const zoneRows: string[][] = mirrored
+    ? zones.map((z, i) => [
+        String(i + 1), z.name, `${z.length}m`,
+        stake(z.start), stake(z.end),
+        stake(mirrored[i]!.start), stake(mirrored[i]!.end),
+      ])
+    : zones.map((z, i) => [String(i + 1), z.name, `${z.length}m`, stake(z.start), stake(z.end)])
+  const primaryItems = signRowsOf(zones)
+  const mirrorItems = mirrored ? signRowsOf(mirrored) : null
+  const exportSignRows: string[][] = mirrored
+    ? primaryItems.map((item, i) => [
+        String(i + 1), item[0], stake(item[1]), stake(mirrorItems![i]![1]), item[2],
+      ])
+    : signRows.map(r => [String(r[0]), r[1], r[2], r[3]])
 
   const zoneTable = exportTable({
     x: 30, y: 438, width: 500,
     title: '1. 各区域起止点',
-    headers: ['序号', '分区名称', '长度', '起点桩号', '终点桩号'],
+    headers: mirrored
+      ? ['序号', '分区名称', '长度', `${primaryDir}起点`, `${primaryDir}终点`, `${mirrorDir}起点`, `${mirrorDir}终点`]
+      : ['序号', '分区名称', '长度', '起点桩号', '终点桩号'],
     rows: zoneRows,
-    columnWidths: [44, 116, 76, 132, 132],
+    columnWidths: mirrored ? [40, 96, 60, 76, 76, 76, 76] : [44, 116, 76, 132, 132],
   })
 
   const signTable = exportTable({
     x: 548, y: 438, width: 545,
     title: '2. 各标志牌位置',
-    headers: ['序号', '标志牌名称', '设置桩号', '位置说明'],
+    headers: mirrored ? ['序号', '标志牌名称', `${primaryDir}桩号`, `${mirrorDir}桩号`, '位置说明'] : ['序号', '标志牌名称', '设置桩号', '位置说明'],
     rows: exportSignRows,
-    columnWidths: [44, 190, 112, 199],
+    columnWidths: mirrored ? [40, 150, 90, 90, 175] : [44, 190, 112, 199],
   })
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 1123 794"><rect width="1123" height="794" fill="#fff"/><rect x="30" y="21" width="4" height="17" fill="#ff9f0a"/><text x="40" y="34" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="20" font-weight="700" fill="#1d1d1f">高速公路作业区布置图</text><text x="40" y="55" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="10" fill="#6e6e73">作业区起点：${xmlText(params.start)}　方向：${params.direction === 'up' ? '上行' : '下行'}　施工位置：${params.workSide === 'median' ? '中央分隔带' : '路侧'}　布置总长度：${total}m</text><rect x="30" y="68" width="1063" height="350" rx="5" fill="#f8fafc" stroke="#9fb0bf"/><svg x="36" y="74" width="1051" height="338" viewBox="${xmlText(svgViewBox)}" preserveAspectRatio="xMidYMid meet">${svgInner}</svg><g font-family="PingFang SC,Microsoft YaHei,sans-serif">${zoneTable}${signTable}</g><line x1="30" y1="764" x2="1093" y2="764" stroke="#9fb0bf"/><text x="30" y="781" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="9" fill="#7b8995">正式实施前，请依据道路等级、设计速度、施工类型及当地现行规范复核。</text><text x="1093" y="781" text-anchor="end" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="9" fill="#7b8995">A4 横向 · 比例示意</text></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 1123 794"><rect width="1123" height="794" fill="#fff"/><rect x="30" y="21" width="4" height="17" fill="#ff9f0a"/><text x="40" y="34" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="20" font-weight="700" fill="#1d1d1f">高速公路作业区布置图</text><text x="40" y="55" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="10" fill="#6e6e73">作业区起点：${xmlText(params.start)}　方向：${doubleSide ? '上/下行' : (params.direction === 'up' ? '上行' : '下行')}　施工位置：${params.workSide === 'median' ? '中央分隔带' : '路侧'}${doubleSide ? '（双侧占路）' : ''}　布置总长度：${total}m</text><rect x="30" y="68" width="1063" height="350" rx="5" fill="#f8fafc" stroke="#9fb0bf"/><svg x="36" y="74" width="1051" height="338" viewBox="${xmlText(svgViewBox)}" preserveAspectRatio="xMidYMid meet">${svgInner}</svg><g font-family="PingFang SC,Microsoft YaHei,sans-serif">${zoneTable}${signTable}</g><line x1="30" y1="764" x2="1093" y2="764" stroke="#9fb0bf"/><text x="30" y="781" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="9" fill="#7b8995">正式实施前，请依据道路等级、设计速度、施工类型及当地现行规范复核。</text><text x="1093" y="781" text-anchor="end" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="9" fill="#7b8995">A4 横向 · 比例示意</text></svg>`
 }

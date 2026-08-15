@@ -15,7 +15,7 @@ import ExcelImportButton from '../components/ExcelImportButton'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
-import { buildExportPage, renderPageToBlob, signSchedule } from '../zone/export'
+import { buildExportPage, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
 import { buildZones, parseZoneParams, stake } from '../zone/utils'
 import { directionLabel, PHASE_COLORS, PHASE_SHORT, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { formatTime, uid } from '../util'
@@ -165,16 +165,17 @@ export default function RecordPage({ id }: { id: string }) {
   async function buildDiagramBlob(): Promise<Blob | null> {
     if (!zoneParams) return null
     const svg = document.querySelector<SVGSVGElement>('.diagram-stage .roadSvg')
-    const viewBox = svg?.getAttribute('viewBox')
-    if (!svg || !viewBox) return null
+    if (!svg) return null
     const zones = buildZones(zoneParams)
     const page = buildExportPage({
-      svgViewBox: viewBox,
-      svgInner: svg.innerHTML,
+      ...snapshotDiagram(svg),
       params: zoneParams,
       zones,
-      signRows: signSchedule(zones, zoneParams.direction),
+      signRows: zoneParams.doubleSide
+        ? signScheduleDouble(zones, zoneParams.direction)
+        : signSchedule(zones, zoneParams.direction),
       total: zones.reduce((sum, zone) => sum + zone.length, 0),
+      doubleSide: zoneParams.doubleSide,
     })
     return renderPageToBlob(page, 3508, 2480)
   }

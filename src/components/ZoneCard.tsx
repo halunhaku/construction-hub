@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import { Download, FileImage, FileText, Hand, Layers3, Maximize2, MousePointer2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import { RoadDiagram } from '../zone/RoadDiagram'
-import { buildZones, stake } from '../zone/utils'
-import { buildExportPage, downloadJpg, downloadPng, downloadPdf, signSchedule } from '../zone/export'
+import { buildZones, mirrorZones, stake } from '../zone/utils'
+import { buildExportPage, downloadJpg, downloadPng, downloadPdf, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
 import type { ZoneParams } from '../types'
 
 export default function ZoneCard({ params, onEdit, onClear, workspace = false, clearLabel = '清除' }: {
@@ -20,23 +20,40 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
 
   const zones = useMemo(() => buildZones(params), [params])
   const total = useMemo(() => zones.reduce((s, z) => s + z.length, 0), [zones])
-  const signRows = useMemo(() => signSchedule(zones, params.direction), [zones, params.direction])
+  // 双侧占路：镜像对向车道分区（与主方向桩号范围重合的作业区、180° 对称）
+  const mirrored = useMemo(
+    () => (params.doubleSide ? mirrorZones(zones, params.direction) : null),
+    [params.doubleSide, params.direction, zones],
+  )
+  const primaryDir = params.direction === 'down' ? '下行' : '上行'
+  const mirrorDir = primaryDir === '上行' ? '下行' : '上行'
+  // 分区表行：单侧仅主方向；双侧两车道合并（方向前缀）
+  const zoneRows = useMemo(() => {
+    if (!mirrored) return null
+    return [
+      ...zones.map((z) => ({ z, dir: primaryDir })),
+      ...mirrored.map((z) => ({ z, dir: mirrorDir })),
+    ]
+  }, [mirrored, zones, primaryDir, mirrorDir])
+  const signRows = useMemo(
+    () => (params.doubleSide ? signScheduleDouble(zones, params.direction) : signSchedule(zones, params.direction)),
+    [params.doubleSide, params.direction, zones],
+  )
 
   function exportDrawing(type: 'png' | 'jpg' | 'pdf') {
-    const svg = diagramRef.current?.querySelector('.roadSvg')
-    const viewBox = svg?.getAttribute('viewBox')
-    if (!svg || !viewBox) {
+    const svg = diagramRef.current?.querySelector<SVGSVGElement>('.roadSvg')
+    if (!svg) {
       setFlash('导出失败：布置图未就绪，请稍后重试')
       return
     }
     setExporting(true)
     const page = buildExportPage({
-      svgViewBox: viewBox,
-      svgInner: svg.innerHTML,
+      ...snapshotDiagram(svg),
       params,
       zones,
       signRows,
       total,
+      doubleSide: params.doubleSide,
     })
     const filename = `A4横向-作业区布置图-${params.start}.${type}`
     const finish = () => setExporting(false)
@@ -47,7 +64,7 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
 
   const meta = `起点 ${params.start} · ${params.direction === 'up' ? '上行' : '下行'} · ${
     params.workSide === 'median' ? '中央分隔带' : '路侧'
-  } · 总长 ${total.toLocaleString()}m`
+  }${params.doubleSide ? ' · 双侧占路' : ''} · 总长 ${total.toLocaleString()}m`
 
   return (
     <div className={`card zone-card${workspace ? ' zone-workspace' : ''}`}>
@@ -81,6 +98,7 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
           zones={zones}
           direction={params.direction}
           workSide={params.workSide}
+          doubleSide={params.doubleSide}
           zoom={zoom}
           coneGap={params.coneGap}
         />
@@ -112,18 +130,18 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
             </tr>
           </thead>
           <tbody>
-            {zones.map((z, i) => (
-              <tr key={z.key}>
+            {(zoneRows ?? zones.map((z) => ({ z, dir: '' }))).map((row, i) => (
+              <tr key={`${row.dir}-${row.z.key}`}>
                 <td>{i + 1}</td>
                 <td>
                   <span className="zone-name">
-                    <i style={{ background: z.color }} />
-                    {z.name}
+                    <i style={{ background: row.z.color }} />
+                    {row.dir ? `${row.dir} · ` : ''}{row.z.name}
                   </span>
                 </td>
-                <td>{z.length}m</td>
-                <td>{stake(z.start)}</td>
-                <td>{stake(z.end)}</td>
+                <td>{row.z.length}m</td>
+                <td>{stake(row.z.start)}</td>
+                <td>{stake(row.z.end)}</td>
               </tr>
             ))}
           </tbody>

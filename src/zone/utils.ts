@@ -12,7 +12,7 @@ export const zoneMeta: ZoneMeta[] = [
 ];
 
 export const defaults: Params = {
-  start:'K123+800', work:1000, direction:'up', workSide:'roadside',
+  start:'K123+800', work:1000, direction:'up', workSide:'roadside', doubleSide:false,
   warning:1600, taper:200, buffer:150, downstream:30, terminal:30,
   speed:100, coneGap:4
 };
@@ -107,6 +107,30 @@ export function buildZones(p: Params): Zone[] {
   });
 }
 
+/* ── 双侧占路镜像 ────────────────────────────────────── */
+
+/**
+ * 生成对向车道的镜像分区：与主方向长度完全一致（上下游一致），
+ * 以作业区终点为锚点反方向延伸，使两侧作业区桩号范围重合。
+ * 主方向为上行时作业区 [start, start+work]，镜像锚点取作业区终点；
+ * 主方向为下行时作业区 [start-work, start]，同样取终点（即低桩号端）。
+ * 不对镜像侧做整百米对齐，保证两侧参数一致（180°对称）。
+ */
+export function mirrorZones(zones: Zone[], direction: Direction): Zone[] {
+  const work = zones[3]!;
+  const opposite: Direction = direction === 'up' ? 'down' : 'up';
+  const anchor = work.end;
+  const before = zones[0]!.length + zones[1]!.length + zones[2]!.length;
+  let cursor = opposite === 'up' ? anchor - before : anchor + before;
+  const sign = opposite === 'up' ? 1 : -1;
+  return zones.map((z) => {
+    const a = cursor;
+    const b = cursor + sign * z.length;
+    cursor = b;
+    return { ...z, start: a, end: b };
+  });
+}
+
 /* ── XML 转义 ────────────────────────────────────────── */
 
 export function xmlText(value: string | number): string {
@@ -132,6 +156,7 @@ export function parseZoneParams(json: string): Params | null {
       work: Number(z.work),
       direction: z.direction === 'down' ? 'down' : 'up',
       workSide: z.workSide === 'median' ? 'median' : 'roadside',
+      doubleSide: z.doubleSide === true,
       warning: Number(z.warning),
       taper: Number(z.taper),
       buffer: Number(z.buffer),
@@ -156,6 +181,11 @@ export function validate(p: Params): Record<string, string> {
     errors.start = `上行时起点桩号需 ≥ ${stake(p.warning + 350)}（警告区 + 上游区段上限），否则将出现负桩号`;
   }
   if (p.work < 10) errors.work = '作业区长度至少 10m';
+  if (p.doubleSide && p.workSide !== 'median') errors.workSide = '双侧占路仅限中央分隔带施工';
+  if (p.doubleSide && p.direction === 'down' && start != null && start < p.work + p.warning + 350) {
+    // 双侧占路时镜像侧（上行）警告区外延：起点 − 作业区 − 警告区 − 上游区段上限
+    errors.start = `双侧占路时下行起点桩号需 ≥ ${stake(p.work + p.warning + 350)}，否则上行侧将出现负桩号`;
+  }
   if (p.warning < 50) errors.warning = '警告区长度至少 50m';
   if (p.taper < 120 || p.taper > 200) errors.taper = '上游过渡区长度应为 120-200m';
   if (p.buffer < 100 || p.buffer > 150) errors.buffer = '缓冲区长度应为 100-150m';
