@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { CalendarDays, CloudSun, Download, Edit3, ImagePlus, MapPin, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { CalendarDays, Download, Edit3, ImagePlus, MapPin, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   deletePhoto,
   deleteRecord,
@@ -25,7 +25,7 @@ function recordState(record: RecordItem): { label: string; className: string } {
   const duringReady = record.photos.during.length > 0
   const afterReady = record.photos.after.length > 0
   if (beforeReady && duringReady && !afterReady) return { label: '施工中', className: 'progress' }
-  if (!record.zone_params || !beforeReady || !duringReady || !afterReady) return { label: '资料待补充', className: 'incomplete' }
+  if (!beforeReady || !duringReady || !afterReady) return { label: '资料待补充', className: 'incomplete' }
   return { label: '已完整', className: 'complete' }
 }
 
@@ -86,6 +86,9 @@ export default function RecordPage({ id }: { id: string }) {
 
   const addPendingRef = useRef(addPending)
   addPendingRef.current = addPending
+  // 记录最新 pending 列表，供组件卸载时统一释放 objectURL（防止离开页面后内存泄漏）
+  const pendingRef = useRef<PendingItem[]>([])
+  pendingRef.current = pending
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -101,6 +104,13 @@ export default function RecordPage({ id }: { id: string }) {
     }
     document.addEventListener('change', handler, true)
     return () => document.removeEventListener('change', handler, true)
+  }, [])
+
+  // 卸载时释放所有待上传照片的 objectURL
+  useEffect(() => {
+    return () => {
+      pendingRef.current.forEach((item) => URL.revokeObjectURL(item.preview))
+    }
   }, [])
 
   async function load() {
@@ -224,10 +234,12 @@ export default function RecordPage({ id }: { id: string }) {
       }
       const content = await zip.generateAsync({ type: 'blob' })
       const anchor = document.createElement('a')
-      anchor.href = URL.createObjectURL(content)
+      const url = URL.createObjectURL(content)
+      anchor.href = url
       anchor.download = `${record.highway}_${record.stake}_施工档案.zip`
       anchor.click()
-      URL.revokeObjectURL(anchor.href)
+      // 延迟释放对象 URL，避免下载尚未开始就被回收（与 PNG/JPG/PDF 导出保持一致）
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
       const parts = [
         all.length ? `${all.length} 张照片` : '',
         diagramIncluded ? '作业区布置图' : '',
@@ -242,14 +254,22 @@ export default function RecordPage({ id }: { id: string }) {
 
   async function remove() {
     if (!window.confirm('确定删除这条记录和全部照片吗？')) return
-    await deleteRecord(id)
-    window.location.hash = '#/'
+    try {
+      await deleteRecord(id)
+      window.location.hash = '#/'
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '删除失败')
+    }
   }
 
   async function clearZone() {
     if (!window.confirm('确定清除作业区布置图吗？')) return
-    await saveZone(id, null)
-    await load()
+    try {
+      await saveZone(id, null)
+      await load()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '清除布置图失败')
+    }
   }
 
   if (!record) {
@@ -261,7 +281,7 @@ export default function RecordPage({ id }: { id: string }) {
 
   return (
     <div className="app-frame detail-frame">
-      <AppHeader trail={['项目', '记录管理', '记录详情']} project={`${record.project_name} · ${record.section}`} />
+      <AppHeader trail={['项目', '记录管理', '记录详情']} project={`${record.project_name} · ${record.section}`} projectKey={record.project_name} />
       <div className="detail-shell">
         <aside className="record-sidebar">
           <div className="sidebar-project">
@@ -297,7 +317,7 @@ export default function RecordPage({ id }: { id: string }) {
           <header className="workspace-heading">
             <div>
               <h1>{record.stake} {directionLabel(record.direction)} · {record.content || '施工记录'}</h1>
-              <p><CalendarDays /> {record.work_date}<CloudSun /> 晴 28℃</p>
+              <p><CalendarDays /> {record.work_date}</p>
             </div>
             <div className="workspace-actions">
               <button className="btn btn-secondary" onClick={() => void downloadAll()} disabled={downloading}>

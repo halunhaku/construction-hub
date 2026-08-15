@@ -27,6 +27,31 @@ function dateLabel(value: string): string {
   return value.slice(0, 10).replaceAll('-', '.')
 }
 
+// ── 最近访问：记录用户最近进入的项目（localStorage，最多 3 个）──
+const RECENT_KEY = 'recent-projects-v1'
+const RECENT_MAX = 3
+
+function loadRecentNames(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function rememberProject(name: string): string[] {
+  const next = [name, ...loadRecentNames().filter((item) => item !== name)].slice(0, RECENT_MAX)
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  } catch {
+    /* 存储失败不影响使用 */
+  }
+  return next
+}
+
 function summarize(name: string, records: RecordItem[]): ProjectSummary {
   const sortedDates = records.map((record) => record.work_date).filter(Boolean).sort()
   const completeCount = records.filter(isComplete).length
@@ -69,6 +94,7 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<ProjectStatus | ''>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [recentNames, setRecentNames] = useState<string[]>(loadRecentNames)
 
   useEffect(() => {
     listRecords()
@@ -96,7 +122,17 @@ export default function DashboardPage() {
     })
   }, [projects, search, status])
 
-  const recent = projects.slice(0, 3)
+  // 最近访问：从访问记录映射回当前项目列表（已删除的项目自动过滤）
+  const recent = useMemo(() => {
+    return recentNames
+      .map((name) => projects.find((project) => project.name === name))
+      .filter((project): project is ProjectSummary => project != null)
+  }, [recentNames, projects])
+
+  function openProject(name: string) {
+    setRecentNames(rememberProject(name))
+    window.location.hash = `#/project/${encodeURIComponent(name)}`
+  }
 
   return (
     <div className="app-frame">
@@ -138,7 +174,7 @@ export default function DashboardPage() {
             <strong>最近访问</strong>
             <div>
               {recent.map((project) => (
-                <button key={project.name} onClick={() => (window.location.hash = `#/project/${encodeURIComponent(project.name)}`)}>
+                <button key={project.name} onClick={() => openProject(project.name)}>
                   {project.name}
                 </button>
               ))}
@@ -161,7 +197,7 @@ export default function DashboardPage() {
               <button
                 className="project-card"
                 key={project.name}
-                onClick={() => (window.location.hash = `#/project/${encodeURIComponent(project.name)}`)}
+                onClick={() => openProject(project.name)}
               >
                 <span className="project-card-head">
                   <span>

@@ -29,7 +29,8 @@ export default function ZoneDetailPage({ id }: { id: string }) {
   // 结束桩号 = 起始桩号 + 作业区长度（自动派生，只读展示）
   const endStake = useMemo(() => {
     const start = parseStake(item?.stake ?? '')
-    return start != null && (item?.length ?? 0) >= 10 ? stake(start + (item?.length ?? 0)) : ''
+    const length = item?.length ?? 0
+    return start != null && length >= 10 ? stake(start + (item?.direction === 'down' ? -length : length)) : ''
   }, [item])
 
   function handleDelete() {
@@ -64,7 +65,7 @@ export default function ZoneDetailPage({ id }: { id: string }) {
               {item.stake}
               {endStake ? ` — ${endStake}` : ''}
             </strong>
-            <p>总长 {item.length.toLocaleString()}m · 更新于 {formatTime(item.updated_at)}</p>
+            <p>作业区 {item.length.toLocaleString()}m · 更新于 {formatTime(item.updated_at)}</p>
           </div>
         </div>
 

@@ -19,6 +19,9 @@ export async function compressImage(file: File, maxSize = 1600, quality = 0.8): 
   canvas.height = h
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('浏览器不支持 Canvas')
+  // 先铺白底：透明 PNG 转 JPEG 时透明区域会渲染成黑色
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, w, h)
   ctx.drawImage(source as CanvasImageSource, 0, 0, w, h)
 
   const blob = await new Promise<Blob>((resolve, reject) => {

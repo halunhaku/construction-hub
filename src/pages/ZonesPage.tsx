@@ -10,7 +10,7 @@ import { formatTime } from '../util'
 function rangeLabel(z: ZoneItem): string {
   const start = parseStake(z.stake)
   if (start == null || z.length < 10) return z.stake
-  return `${stake(start)} — ${stake(start + z.length)}`
+  return `${stake(start)} — ${stake(start + (z.direction === 'down' ? -z.length : z.length))}`
 }
 
 export default function ZonesPage() {
@@ -84,7 +84,7 @@ export default function ZonesPage() {
                 <span className="zone-list-main">
                   <strong>{rangeLabel(zone)}</strong>
                   <span className="zone-list-range">
-                    {directionLabel(zone.direction) || '方向未指定'} · 总长 {zone.length.toLocaleString()}m
+                    {directionLabel(zone.direction) || '方向未指定'} · 作业区 {zone.length.toLocaleString()}m
                   </span>
                 </span>
                 <span className="zone-list-foot">

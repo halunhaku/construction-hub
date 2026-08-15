@@ -5,10 +5,14 @@ import { listProjects } from '../api'
 export default function AppHeader({
   trail,
   project,
+  projectKey,
 }: {
   trail: string[]
   project?: string
+  /** 用于项目切换器高亮匹配的项目名（默认取 project，详情页会传「项目名 · 路段」） */
+  projectKey?: string
 }) {
+  const activeName = projectKey ?? project
   const [open, setOpen] = useState(false)
   const [projects, setProjects] = useState<{ name: string; count: number }[]>([])
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -77,12 +81,12 @@ export default function AppHeader({
                     <button
                       key={p.name}
                       role="option"
-                      aria-selected={p.name === project}
-                      className={`project-switcher-item${p.name === project ? ' active' : ''}`}
+                      aria-selected={p.name === activeName}
+                      className={`project-switcher-item${p.name === activeName ? ' active' : ''}`}
                       onClick={() => switchTo(p.name)}
                     >
                       <span className="project-switcher-item-name">{p.name}</span>
-                      {p.name === project ? (
+                      {p.name === activeName ? (
                         <Check className="project-switcher-check" aria-hidden="true" />
                       ) : (
                         <span className="project-switcher-count">{p.count}</span>

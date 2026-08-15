@@ -69,6 +69,9 @@ function validateZoneObject(zone: unknown): { ok: true; params: string } | { ok:
   if (z.workSide !== 'roadside' && z.workSide !== 'median') {
     return { ok: false, error: 'zone.workSide 必须是 roadside / median' }
   }
+  if (z.doubleSide === true && z.workSide !== 'median') {
+    return { ok: false, error: 'zone.doubleSide 仅限中央分隔带施工（workSide=median）' }
+  }
   return { ok: true, params: JSON.stringify(z) }
 }
 

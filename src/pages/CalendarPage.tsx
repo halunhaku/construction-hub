@@ -80,6 +80,10 @@ export default function CalendarPage() {
     const d = new Date(year, month + delta, 1)
     setYear(d.getFullYear())
     setMonth(d.getMonth())
+    // 切月后选中新月份的日期：回到当前月则选中今天，否则选中当月 1 号
+    const targetKey = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`
+    const todayStr = today()
+    setSelected(targetKey === todayStr.slice(0, 7) ? todayStr : `${targetKey}-01`)
   }
 
   return (

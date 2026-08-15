@@ -172,6 +172,15 @@ export function parseZoneParams(json: string): Params | null {
 
 export function validate(p: Params): Record<string, string> {
   const errors: Record<string, string> = {};
+  // 数值字段必须为有限数：输入框清空或输入非法字符会得到 0/NaN，
+  // NaN 会通过后续 `< min` 比较（NaN < 10 为 false），最终被 JSON 序列化成 null。
+  for (const [key, label] of [
+    ['work', '作业区长度'], ['warning', '警告区长度'], ['taper', '上游过渡区长度'],
+    ['buffer', '缓冲区长度'], ['downstream', '下游过渡区长度'], ['terminal', '终止区长度'],
+    ['speed', '设计速度'], ['coneGap', '锥桶间距'],
+  ] as const) {
+    if (!Number.isFinite(p[key])) errors[key] = `${label}必须是有效数字`;
+  }
   const start = parseStake(p.start);
   if (!start) {
     errors.start = '桩号格式错误，示例：K123+800';

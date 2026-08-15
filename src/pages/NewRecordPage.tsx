@@ -102,10 +102,11 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
     const s = parseStake(zone?.start ?? '')
     const w = zone?.work ?? 0
     if (s != null && w >= 10) {
-      const es = stake(s + w)
+      // 下行桩号递减，结束桩号 = 起点 − 作业区长度
+      const es = stake(s + (zone?.direction === 'down' ? -w : w))
       setForm((f) => (f.end_stake === es ? f : { ...f, end_stake: es }))
     }
-  }, [zone?.start, zone?.work])
+  }, [zone?.start, zone?.work, zone?.direction])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

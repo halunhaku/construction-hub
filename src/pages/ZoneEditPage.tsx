@@ -36,7 +36,7 @@ export default function ZoneEditPage({ id }: { id?: string }) {
   // 结束桩号 = 起始桩号 + 作业区长度（自动计算，只读展示，无需手输）
   const endStake = (() => {
     const s = parseStake(zone.start)
-    return s != null && zone.work >= 10 ? stake(s + zone.work) : ''
+    return s != null && zone.work >= 10 ? stake(s + (zone.direction === 'down' ? -zone.work : zone.work)) : ''
   })()
 
   async function submit(e: React.FormEvent) {
