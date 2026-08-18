@@ -40,6 +40,24 @@ function ZoneBadge({ block, y, textY }: { block: ZoneBlock; y: number; textY: nu
   )
 }
 
+function CompactZoneCallout({ block, x, y, anchorY }: {
+  block: ZoneBlock
+  x: number
+  y: number
+  anchorY: number
+}) {
+  const label = `${block.name} ${block.length}m`
+  const width = Math.max(74, Array.from(label).length * 9 + 14)
+  const blockCenter = block.x + block.w / 2
+  return (
+    <g>
+      <line x1={blockCenter} y1={anchorY} x2={x} y2={y + 11} stroke={block.color} strokeWidth="1" opacity=".7" />
+      <rect x={x - width / 2} y={y} width={width} height="22" rx="4" fill={block.color} opacity=".13" stroke={block.color} />
+      <text x={x} y={y + 15} textAnchor="middle" fontSize="9" fill={block.color}>{label}</text>
+    </g>
+  )
+}
+
 function RoadSign({ x, y = 48, type }: { x: number; y?: number; type: SignType }) {
   return (
     <g transform={`translate(${x} ${y})`}>
@@ -118,23 +136,42 @@ function Lane({ geom, blocks, coneGap, workSide, lane, speed }: {
   const stakeTextY = upper ? 385 : 58
   const guideStartY = upper ? 110 : 38
   const guideEndY = upper ? 352 : 310
+  // 双侧图按同一桩号轴缩放时，30m 下游/终止区仅约 10px。
+  // 将其名称和长度移到外侧错层标注，避免两个尺寸值和分区名称叠在一起。
+  const compactTail = blocks[4]!.w < 48 || blocks[5]!.w < 48
+  const tailEdge = upper
+    ? Math.min(blocks[4]!.x, blocks[5]!.x)
+    : Math.max(blocks[4]!.x + blocks[4]!.w, blocks[5]!.x + blocks[5]!.w)
+  const tailCalloutX = tailEdge + (upper ? -62 : 62)
+  const compactCalloutY = upper ? [384, 407] : [0, 23]
 
   return (
     <g>
-      {blocks.map(b => (
-        <g key={`${lane}-${b.key}`}>
-          <rect className="zoneColor" x={b.x} y={zoneY} width={b.w} height={zoneHeight} fill={b.color} opacity=".75" />
-          <line x1={b.x} y1={guideStartY} x2={b.x} y2={guideEndY} stroke="#c7c7cc" />
-          <line x1={b.x} y1={dimensionY} x2={b.x + b.w} y2={dimensionY} stroke="#6e6e73" />
-          <path d={`M${b.x} ${dimensionY}l8 -4v8zM${b.x + b.w} ${dimensionY}l-8 -4v8z`} fill="#6e6e73" />
-          <text className="lengthLabel" x={b.x + b.w / 2} y={dimensionTextY} textAnchor="middle" fontSize="11" fontWeight="700" fill="#3a3a3c">{b.length}m</text>
-          {/* 窄分区（双侧占路时下游/终止区约 10px）省略桩号，避免与相邻桩号重叠 */}
-          {b.w >= 48 ? (
-            <text className="stakeLabel" x={b.x} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">{stake(upper ? b.end : b.start)}</text>
-          ) : null}
-          <ZoneBadge block={b} y={zoneBadgeY} textY={zoneBadgeTextY} />
-        </g>
-      ))}
+      {blocks.map((b, bi) => {
+        const compact = compactTail && (bi === 4 || bi === 5)
+        return (
+          <g key={`${lane}-${b.key}`}>
+            <rect className="zoneColor" x={b.x} y={zoneY} width={b.w} height={zoneHeight} fill={b.color} opacity=".75" />
+            <line x1={b.x} y1={guideStartY} x2={b.x} y2={guideEndY} stroke="#c7c7cc" />
+            <line x1={b.x} y1={dimensionY} x2={b.x + b.w} y2={dimensionY} stroke="#6e6e73" />
+            <path d={`M${b.x} ${dimensionY}l8 -4v8zM${b.x + b.w} ${dimensionY}l-8 -4v8z`} fill="#6e6e73" />
+            {!compact ? (
+              <text className="lengthLabel" x={b.x + b.w / 2} y={dimensionTextY} textAnchor="middle" fontSize="11" fontWeight="700" fill="#3a3a3c">{b.length}m</text>
+            ) : null}
+            {/* 窄分区（双侧占路时下游/终止区约 10px）省略桩号，避免与相邻桩号重叠 */}
+            {b.w >= 48 ? (
+              <text className="stakeLabel" x={b.x} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">{stake(upper ? b.end : b.start)}</text>
+            ) : null}
+            {!compact ? <ZoneBadge block={b} y={zoneBadgeY} textY={zoneBadgeTextY} /> : null}
+          </g>
+        )
+      })}
+      {compactTail ? (
+        <>
+          <CompactZoneCallout block={blocks[4]!} x={tailCalloutX} y={compactCalloutY[0]!} anchorY={dimensionY} />
+          <CompactZoneCallout block={blocks[5]!} x={tailCalloutX} y={compactCalloutY[1]!} anchorY={dimensionY} />
+        </>
+      ) : null}
       <line x1={laneRightEdge} y1={guideStartY} x2={laneRightEdge} y2={upper ? 391 : 66} stroke="#c7c7cc" />
       <text className="stakeLabel" x={laneRightEdge} y={stakeTextY} textAnchor="middle" fontSize="10" fill="#6e6e73">
         {stake(upper ? blocks[0]!.start : blocks[5]!.end)}
