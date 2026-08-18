@@ -111,6 +111,17 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    const missingFields = [
+      !form.project_name.trim() ? '项目名称' : '',
+      !form.highway.trim() ? '高速公路' : '',
+      !form.section.trim() ? '路段' : '',
+      !form.stake.trim() ? '起始桩号' : '',
+      !form.work_date ? '施工日期' : '',
+    ].filter(Boolean)
+    if (missingFields.length > 0) {
+      setError(`请填写必填项：${missingFields.join('、')}`)
+      return
+    }
     setShowZoneErrors(true)
     // 布置图必选：参数无效时阻止保存，并在预览区提示
     const zoneErrors = validateZone(zone)
@@ -166,7 +177,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         <span className="topbar-spacer" />
       </header>
 
-      <form className="form" onSubmit={submit}>
+      <form className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
         <h2 className="form-section-title">基本信息</h2>
         <div className="card form-card">
         <label>

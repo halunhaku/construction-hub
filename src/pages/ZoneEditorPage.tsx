@@ -66,7 +66,7 @@ export default function ZoneEditorPage({ id }: { id: string }) {
       </header>
 
       {loaded && (
-        <form className="card form" onSubmit={submit}>
+        <form className="card form" onSubmit={submit} onChange={() => setError('')} noValidate>
           <ZoneForm value={zone} onChange={setZone} allowDisable={false} showErrors={showZoneErrors} />
           {error && <div className="notice error">{error}</div>}
           <button type="submit" className="btn btn-primary btn-block" disabled={saving}>

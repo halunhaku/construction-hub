@@ -78,11 +78,10 @@ export default function ZoneEditPage({ id }: { id?: string }) {
           <span className="topbar-spacer" />
         </header>
 
-        {error && !loading ? <div className="notice error">{error}</div> : null}
         {loading ? <div className="table-empty">正在加载布控区域…</div> : null}
 
         {!loading && (
-          <form className="form" onSubmit={submit}>
+          <form className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
             <h2 className="form-section-title">作业区布置</h2>
             <div className="card form-card">
               <div className="form-row">
