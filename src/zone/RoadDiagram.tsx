@@ -124,7 +124,6 @@ function Lane({ geom, blocks, coneGap, workSide, lane, speed }: {
   const warningSigns = warningSignOffsets
     .filter(offset => offset <= warnLen)
     .map(offset => ({ x: warningX(offset)!, type: warnTypes[offset]! }))
-  const guideX = along(blocks[1]!, Math.min(1, 50 / Math.max(1, blocks[1]!.length)))
   const terminalEnd = upper ? blocks[5]!.x : blocks[5]!.x + blocks[5]!.w
   // 车道远端（桩号最小端）边界：上行取警告区起点，下行取终止区终点
   const laneRightEdge = upper ? blocks[0]!.x + blocks[0]!.w : blocks[5]!.x + blocks[5]!.w
@@ -177,12 +176,11 @@ function Lane({ geom, blocks, coneGap, workSide, lane, speed }: {
         {stake(upper ? blocks[0]!.start : blocks[5]!.end)}
       </text>
       {cones}
-      {/* 缓冲区入口：作业区长度标志（路栏/导向标志位置见表格） */}
+      {/* 缓冲区入口：作业区长度标志；导向标志仅在下方位置表中列示 */}
       <RoadSign x={along(blocks[2]!, 0)} y={signY} type="length" />
       {warningSigns.map(s => (
         <RoadSign key={s.type} x={s.x} y={signY} type={s.type} />
       ))}
-      <RoadSign x={guideX} y={signY} type={workSide === 'roadside' ? 'arrowLeft' : 'arrowRight'} />
       {wx1200 != null && <RoadSign x={wx1200} y={oppositeSignY} type="noOvertake" />}
       {wx0 != null && <RoadSign x={wx0} y={oppositeSignY} type="construction1600" />}
       <RoadSign x={terminalEnd} y={signY} type={limits.final === 60 ? 'end60' : 'end40'} />
