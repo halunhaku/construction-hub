@@ -9,6 +9,7 @@
     "dev:api": "wrangler pages dev dist --port 8788",
     "build": "tsc -b && tsc -p functions/tsconfig.json && vite build",
     "lint": "oxlint",
+    "test": "tsc -p tsconfig.test.json && node --test --experimental-strip-types --experimental-specifier-resolution=node tests/*.test.ts",
     "preview": "vite preview",
     "db:init": "wrangler d1 execute three-photos-db --file=schema.sql",
     "db:migrate:excel": "wrangler d1 execute three-photos-db --local --file=migrations/0002_excel_import_fields.sql",

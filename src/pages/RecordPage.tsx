@@ -16,7 +16,7 @@ import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
 import { buildExportPage, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
-import { buildZones, parseZoneParams, stake } from '../zone/utils'
+import { buildZones, mirrorZones, parseZoneParams, stake, zoneExtent } from '../zone/utils'
 import { directionLabel, PHASE_COLORS, PHASE_SHORT, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { formatTime, uid } from '../util'
 
@@ -60,11 +60,13 @@ export default function RecordPage({ id }: { id: string }) {
   const zoneSummary = useMemo(() => {
     if (!zoneParams) return null
     const zones = buildZones(zoneParams)
-    const allStakes = zones.flatMap((zone) => [zone.start, zone.end])
+    const mirrored = zoneParams.doubleSide ? mirrorZones(zones, zoneParams.direction) : undefined
+    const extent = zoneExtent(zones, mirrored)
     return {
       total: zones.reduce((sum, zone) => sum + zone.length, 0),
-      from: stake(Math.min(...allStakes)),
-      to: stake(Math.max(...allStakes)),
+      from: stake(extent.min),
+      to: stake(extent.max),
+      span: extent.span,
     }
   }, [zoneParams])
 
@@ -182,8 +184,8 @@ export default function RecordPage({ id }: { id: string }) {
       params: zoneParams,
       zones,
       signRows: zoneParams.doubleSide
-        ? signScheduleDouble(zones, zoneParams.direction)
-        : signSchedule(zones, zoneParams.direction),
+        ? signScheduleDouble(zones, zoneParams.direction, zoneParams.speed)
+        : signSchedule(zones, zoneParams.direction, zoneParams.speed),
       total: zones.reduce((sum, zone) => sum + zone.length, 0),
       doubleSide: zoneParams.doubleSide,
     })
@@ -391,9 +393,11 @@ export default function RecordPage({ id }: { id: string }) {
               <dl>
                 <div><dt>作业区长度</dt><dd>{zoneParams.work}m</dd></div>
                 <div><dt>缓冲区长度</dt><dd>{zoneParams.buffer}m</dd></div>
-                <div><dt>限速值</dt><dd>{zoneParams.speed}km/h</dd></div>
-                <div><dt>布置总长</dt><dd>{zoneSummary.total}m</dd></div>
-                <div><dt>影响范围</dt><dd className="numeric">{zoneSummary.from} — {zoneSummary.to}</dd></div>
+                <div><dt>设计速度</dt><dd>{zoneParams.speed}km/h</dd></div>
+                <div><dt>逐级限速</dt><dd>{zoneParams.speed === 80 ? '60 → 40' : '80 → 60'}km/h</dd></div>
+                <div><dt>{zoneParams.doubleSide ? '单侧布置长度' : '布置总长'}</dt><dd>{zoneSummary.total}m</dd></div>
+                <div><dt>{zoneParams.doubleSide ? '整体影响范围' : '影响范围'}</dt><dd className="numeric">{zoneSummary.from} — {zoneSummary.to}</dd></div>
+                {zoneParams.doubleSide ? <div><dt>整体影响跨度</dt><dd>{zoneSummary.span.toLocaleString()}m</dd></div> : null}
               </dl>
             ) : <p className="inspector-empty">尚未生成布置参数。</p>}
           </section>

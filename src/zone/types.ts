@@ -2,7 +2,7 @@
 
 export type Direction = 'up' | 'down';
 export type WorkSide = 'roadside' | 'median';
-export type SignType = 'construction1600' | 'construction800' | 'length' | 'smart' | 'limit80' | 'limit60' | 'laneLeft' | 'laneRight' | 'noOvertake' | 'arrowLeft' | 'arrowRight' | 'end60' | 'endOvertake';
+export type SignType = 'construction1600' | 'construction800' | 'length' | 'smart' | 'limit80' | 'limit60' | 'limit40' | 'laneLeft' | 'laneRight' | 'noOvertake' | 'arrowLeft' | 'arrowRight' | 'end60' | 'end40' | 'endOvertake';
 export type ExportFileType = 'png' | 'jpg' | 'pdf';
 
 export interface Params {

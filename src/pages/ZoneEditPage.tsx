@@ -10,6 +10,7 @@ export default function ZoneEditPage({ id }: { id?: string }) {
   const editing = Boolean(id)
   const [zone, setZone] = useState<ZoneParams>({ ...defaults, start: '' })
   const [error, setError] = useState('')
+  const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(editing)
 
@@ -41,6 +42,7 @@ export default function ZoneEditPage({ id }: { id?: string }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    setShowZoneErrors(true)
     const zoneErrors = validateZone(zone)
     if (Object.keys(zoneErrors).length > 0) {
       const messages = [
@@ -89,7 +91,13 @@ export default function ZoneEditPage({ id }: { id?: string }) {
                   <input readOnly value={endStake || '填写起始桩号与长度后自动计算'} />
                 </label>
               </div>
-              <ZoneForm value={zone} onChange={(z) => z && setZone(z)} allowDisable={false} linked={false} />
+              <ZoneForm
+                value={zone}
+                onChange={(z) => z && setZone(z)}
+                allowDisable={false}
+                linked={false}
+                showErrors={showZoneErrors}
+              />
             </div>
 
             {error ? <div className="notice error">{error}</div> : null}

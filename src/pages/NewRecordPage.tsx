@@ -35,6 +35,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
     contents: string[]
   }>({ projects: [], highways: [], sections: [], contents: [] })
   const [error, setError] = useState('')
+  const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(editing)
 
@@ -110,6 +111,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    setShowZoneErrors(true)
     // 布置图必选：参数无效时阻止保存，并在预览区提示
     const zoneErrors = validateZone(zone)
     if (Object.keys(zoneErrors).length > 0) {
@@ -230,6 +232,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
             <input
               type="number"
               min={10}
+              max={4000}
               value={zone?.work ?? 1000}
               onChange={(e) => handleWork(Number(e.target.value))}
             />
@@ -280,7 +283,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         <h2 className="form-section-title">作业区布置</h2>
         <div className="card form-card">
           {zone ? (
-            <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked />
+            <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked showErrors={showZoneErrors} />
           ) : (
             <p className="inspector-empty">该记录暂无作业区布置图，保存后可在详情页创建。</p>
           )}

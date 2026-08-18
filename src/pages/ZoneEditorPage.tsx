@@ -10,6 +10,7 @@ export default function ZoneEditorPage({ id }: { id: string }) {
   const [zone, setZone] = useState<ZoneParams | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
+  const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function ZoneEditorPage({ id }: { id: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!loaded || !zone) return
+    setShowZoneErrors(true)
     const errs = validateZone(zone)
     if (Object.keys(errs).length > 0) {
       setError('布置参数有误，请修正（红色提示处）')
@@ -65,7 +67,7 @@ export default function ZoneEditorPage({ id }: { id: string }) {
 
       {loaded && (
         <form className="card form" onSubmit={submit}>
-          <ZoneForm value={zone} onChange={setZone} allowDisable={false} />
+          <ZoneForm value={zone} onChange={setZone} allowDisable={false} showErrors={showZoneErrors} />
           {error && <div className="notice error">{error}</div>}
           <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
             {saving ? '保存中…' : '保存布置图'}

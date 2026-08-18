@@ -1,18 +1,18 @@
 import type { ReactElement } from 'react'
 import type { Direction, SignType, WorkSide, Zone, ZoneBlock } from './types'
-import { mirrorZones, stake, warningSignOffsets } from './utils'
+import { mirrorZones, speedLimits, stake, warningSignOffsets } from './utils'
 
 /* ── 子组件 ──────────────────────────────────────────── */
 
 function SignFace({ type }: { type: SignType }) {
   const labels: Record<SignType, string> = {
     construction1600: '1600', construction800: '800', length: '长度', smart: '智驾',
-    limit80: '80', limit60: '60', laneLeft: '减道', laneRight: '减道',
-    noOvertake: '禁超', arrowLeft: '导向', arrowRight: '导向',
-    end60: '解60', endOvertake: '解禁',
+    limit80: '80', limit60: '60', limit40: '40', laneLeft: '减道', laneRight: '减道',
+    noOvertake: '禁超', arrowLeft: '←', arrowRight: '→',
+    end60: '解60', end40: '解40', endOvertake: '解禁',
   }
-  const ended = type === 'end60' || type === 'endOvertake'
-  const limit = type === 'limit80' || type === 'limit60'
+  const ended = type === 'end60' || type === 'end40' || type === 'endOvertake'
+  const limit = type === 'limit80' || type === 'limit60' || type === 'limit40'
   return (
     <g>
       <circle r="22" fill={ended ? '#f2f2f7' : '#fff'} stroke={ended ? '#8e8e93' : limit ? '#ff3b30' : '#ff9f0a'} strokeWidth="3" />
@@ -59,12 +59,13 @@ interface LaneGeom {
   oppositeSignY: number
 }
 
-function Lane({ geom, blocks, coneGap, workSide, lane }: {
+function Lane({ geom, blocks, coneGap, workSide, lane, speed }: {
   geom: LaneGeom
   blocks: ZoneBlock[]
   coneGap: number
   workSide: WorkSide
   lane: 'up' | 'down'
+  speed: number
 }): ReactElement {
   const { upper, zoneY, workBoundaryY, guardrailY, signY, oppositeSignY } = geom
   const zoneHeight = 53
@@ -91,10 +92,13 @@ function Lane({ geom, blocks, coneGap, workSide, lane }: {
   })
 
   const warnLen = blocks[0]!.length
+  const limits = speedLimits(speed)
   const warnTypes: Record<number, SignType> = {
     0: 'construction1600', 400: 'smart', 600: 'limit80', 800: 'construction800',
     1000: 'limit60', 1200: workSide === 'median' ? 'laneLeft' : 'laneRight',
   }
+  warnTypes[600] = limits.first === 80 ? 'limit80' : 'limit60'
+  warnTypes[1000] = limits.final === 60 ? 'limit60' : 'limit40'
   const warningX = (offset: number) =>
     warnLen > 0 && offset <= warnLen ? along(blocks[0]!, offset / warnLen) : null
   const wx1200 = warningX(1200)
@@ -102,6 +106,7 @@ function Lane({ geom, blocks, coneGap, workSide, lane }: {
   const warningSigns = warningSignOffsets
     .filter(offset => offset <= warnLen)
     .map(offset => ({ x: warningX(offset)!, type: warnTypes[offset]! }))
+  const guideX = along(blocks[1]!, Math.min(1, 50 / Math.max(1, blocks[1]!.length)))
   const terminalEnd = upper ? blocks[5]!.x : blocks[5]!.x + blocks[5]!.w
   // 车道远端（桩号最小端）边界：上行取警告区起点，下行取终止区终点
   const laneRightEdge = upper ? blocks[0]!.x + blocks[0]!.w : blocks[5]!.x + blocks[5]!.w
@@ -140,9 +145,10 @@ function Lane({ geom, blocks, coneGap, workSide, lane }: {
       {warningSigns.map(s => (
         <RoadSign key={s.type} x={s.x} y={signY} type={s.type} />
       ))}
+      <RoadSign x={guideX} y={signY} type={workSide === 'roadside' ? 'arrowLeft' : 'arrowRight'} />
       {wx1200 != null && <RoadSign x={wx1200} y={oppositeSignY} type="noOvertake" />}
       {wx0 != null && <RoadSign x={wx0} y={oppositeSignY} type="construction1600" />}
-      <RoadSign x={terminalEnd} y={signY} type="end60" />
+      <RoadSign x={terminalEnd} y={signY} type={limits.final === 60 ? 'end60' : 'end40'} />
       <RoadSign x={terminalEnd} y={oppositeSignY} type="endOvertake" />
     </g>
   )
@@ -150,7 +156,7 @@ function Lane({ geom, blocks, coneGap, workSide, lane }: {
 
 /* ── 主组件 ──────────────────────────────────────────── */
 
-export function RoadDiagram({ zones, direction, workSide, doubleSide = false, zoom, coneGap }: {
+export function RoadDiagram({ zones, direction, workSide, doubleSide = false, zoom, coneGap, speed }: {
   zones: Zone[]
   direction: Direction
   workSide: WorkSide
@@ -158,6 +164,7 @@ export function RoadDiagram({ zones, direction, workSide, doubleSide = false, zo
   doubleSide?: boolean
   zoom: number
   coneGap: number
+  speed: number
 }) {
   const upper = direction === 'up'
   const total = zones.reduce((s, z) => s + z.length, 0)
@@ -257,7 +264,7 @@ export function RoadDiagram({ zones, direction, workSide, doubleSide = false, zo
           </g>
         ))}
         {lanes.map(l => (
-          <Lane key={l.lane} geom={l.geom} blocks={l.blocks} coneGap={coneGap} workSide={workSide} lane={l.lane} />
+          <Lane key={l.lane} geom={l.geom} blocks={l.blocks} coneGap={coneGap} workSide={workSide} lane={l.lane} speed={speed} />
         ))}
         <text x="48" y="137" fill="#fff" fontSize="12" fontWeight="700">上行 ←</text>
         <text x="48" y="261" fill="#fff" fontSize="12" fontWeight="700">下行 →</text>

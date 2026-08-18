@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
+import type { Params as ZoneParams } from '../../src/zone/types'
+import { validateZone } from '../../src/zone/validation.ts'
 
 type Bindings = {
   DB: D1Database
@@ -49,7 +51,7 @@ interface ZoneRow {
  * 校验作业区布置参数对象，返回 JSON 字符串；非法时返回错误信息。
  * 供记录布置图（PUT /records/:id/zone）与独立布控区域（zones CRUD）共用。
  */
-function validateZoneObject(zone: unknown): { ok: true; params: string } | { ok: false; error: string } {
+export function validateZoneObject(zone: unknown): { ok: true; params: string } | { ok: false; error: string } {
   if (typeof zone !== 'object' || zone === null || Array.isArray(zone)) {
     return { ok: false, error: 'zone 必须是对象' }
   }
@@ -63,16 +65,46 @@ function validateZoneObject(zone: unknown): { ok: true; params: string } | { ok:
   for (const [key, type] of required) {
     if (typeof z[key] !== type) return { ok: false, error: `zone.${key} 必须是 ${type}` }
   }
+  if (z.doubleSide !== undefined && typeof z.doubleSide !== 'boolean') {
+    return { ok: false, error: 'zone.doubleSide 必须是 boolean' }
+  }
   if (z.direction !== 'up' && z.direction !== 'down') {
     return { ok: false, error: 'zone.direction 必须是 up / down' }
   }
   if (z.workSide !== 'roadside' && z.workSide !== 'median') {
     return { ok: false, error: 'zone.workSide 必须是 roadside / median' }
   }
-  if (z.doubleSide === true && z.workSide !== 'median') {
-    return { ok: false, error: 'zone.doubleSide 仅限中央分隔带施工（workSide=median）' }
+  const normalized: ZoneParams = {
+    start: z.start as string,
+    work: z.work as number,
+    direction: z.direction,
+    workSide: z.workSide,
+    doubleSide: z.doubleSide === true,
+    warning: z.warning as number,
+    taper: z.taper as number,
+    buffer: z.buffer as number,
+    downstream: z.downstream as number,
+    terminal: z.terminal as number,
+    speed: z.speed as number,
+    coneGap: z.coneGap as number,
   }
-  return { ok: true, params: JSON.stringify(z) }
+  const errors = validateZone(normalized)
+  const firstError = Object.entries(errors)[0]
+  if (firstError) return { ok: false, error: `zone.${firstError[0]}: ${firstError[1]}` }
+  return { ok: true, params: JSON.stringify(normalized) }
+}
+
+/** 记录接口使用 JSON 字符串传递 zone_params，解析后复用同一校验器。 */
+export function validateZoneParamsText(value: unknown): { ok: true; params: string | null } | { ok: false; error: string } {
+  if (value == null) return { ok: true, params: null }
+  if (typeof value !== 'string') return { ok: false, error: 'zone_params 必须是 JSON 字符串或 null' }
+  let zone: unknown
+  try {
+    zone = JSON.parse(value)
+  } catch {
+    return { ok: false, error: 'zone_params 不是有效的 JSON' }
+  }
+  return validateZoneObject(zone)
 }
 
 function toRecord(rows: RecordRow[]) {
@@ -168,7 +200,9 @@ app.post('/records', async (c) => {
   const direction = String(body.direction ?? '').trim()
   const content = String(body.content ?? '').trim()
   const work_date = String(body.work_date ?? '').trim()
-  const zone_params = body.zone_params == null ? null : String(body.zone_params)
+  const zoneResult = validateZoneParamsText(body.zone_params)
+  if (!zoneResult.ok) return c.json({ error: zoneResult.error }, 400)
+  const zone_params = zoneResult.params
   if (!project_name || !highway || !section || !stake || !work_date) {
     return c.json({ error: '项目名称、高速公路、路段、桩号、施工日期为必填项' }, 400)
   }
@@ -204,7 +238,9 @@ app.put('/records/:id', async (c) => {
   const direction = String(body.direction ?? '').trim()
   const content = String(body.content ?? '').trim()
   const work_date = String(body.work_date ?? '').trim()
-  const zone_params = body.zone_params == null ? null : String(body.zone_params)
+  const zoneResult = validateZoneParamsText(body.zone_params)
+  if (!zoneResult.ok) return c.json({ error: zoneResult.error }, 400)
+  const zone_params = zoneResult.params
   if (!project_name || !highway || !section || !stake || !work_date) {
     return c.json({ error: '项目名称、高速公路、路段、桩号、施工日期为必填项' }, 400)
   }

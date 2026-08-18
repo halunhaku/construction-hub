@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Download, FileImage, FileText, Hand, Layers3, Maximize2, MousePointer2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import { RoadDiagram } from '../zone/RoadDiagram'
-import { buildZones, mirrorZones, stake } from '../zone/utils'
+import { buildZones, mirrorZones, stake, zoneExtent } from '../zone/utils'
 import { buildExportPage, downloadJpg, downloadPng, downloadPdf, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
 import type { ZoneParams } from '../types'
 
@@ -25,6 +25,7 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
     () => (params.doubleSide ? mirrorZones(zones, params.direction) : null),
     [params.doubleSide, params.direction, zones],
   )
+  const extent = useMemo(() => zoneExtent(zones, mirrored ?? undefined), [mirrored, zones])
   const primaryDir = params.direction === 'down' ? '下行' : '上行'
   const mirrorDir = primaryDir === '上行' ? '下行' : '上行'
   // 分区表行：单侧仅主方向；双侧两车道合并（方向前缀）
@@ -36,8 +37,8 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
     ]
   }, [mirrored, zones, primaryDir, mirrorDir])
   const signRows = useMemo(
-    () => (params.doubleSide ? signScheduleDouble(zones, params.direction) : signSchedule(zones, params.direction)),
-    [params.doubleSide, params.direction, zones],
+    () => (params.doubleSide ? signScheduleDouble(zones, params.direction, params.speed) : signSchedule(zones, params.direction, params.speed)),
+    [params.doubleSide, params.direction, params.speed, zones],
   )
 
   function exportDrawing(type: 'png' | 'jpg' | 'pdf') {
@@ -64,7 +65,9 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
 
   const meta = `起点 ${params.start} · ${params.direction === 'up' ? '上行' : '下行'} · ${
     params.workSide === 'median' ? '中央分隔带' : '路侧'
-  }${params.doubleSide ? ' · 双侧占路' : ''} · 总长 ${total.toLocaleString()}m`
+  }${params.doubleSide ? ' · 双侧占路' : ''} · ${params.doubleSide ? '单侧长度' : '总长'} ${total.toLocaleString()}m${
+    params.doubleSide ? ` · 整体影响 ${stake(extent.min)}—${stake(extent.max)}（${extent.span.toLocaleString()}m）` : ''
+  }`
 
   return (
     <div className={`card zone-card${workspace ? ' zone-workspace' : ''}`}>
@@ -101,6 +104,7 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
           doubleSide={params.doubleSide}
           zoom={zoom}
           coneGap={params.coneGap}
+          speed={params.speed}
         />
       </div>
 
@@ -172,7 +176,7 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
         </table>
       </div> : null}
       {!workspace ? <p className="tip">
-        导出为 A4 横向图纸（300dpi）。正式实施前，请依据道路等级、设计速度、施工类型及当地现行规范复核。
+        导出为 A4 横向图纸（300dpi）。图中锥桶数量仅表示布置走向，现场数量按设定的 1-4m 间距放样确定。正式实施前，请依据道路等级、设计速度、施工类型及当地现行规范复核。
       </p> : null}
     </div>
   )
