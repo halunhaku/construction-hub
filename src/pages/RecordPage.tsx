@@ -331,6 +331,11 @@ export default function RecordPage({ id }: { id: string }) {
               <button className="btn btn-primary" onClick={() => (window.location.hash = `#/record/${id}/zone`)}>
                 <Edit3 /> {zoneParams ? '编辑布置' : '创建布置'}
               </button>
+              {zoneParams ? (
+                <button className="btn btn-danger" onClick={() => void clearZone()}>
+                  <Trash2 /> 清除布置
+                </button>
+              ) : null}
             </div>
           </header>
           {error ? <div className="notice error">{error}</div> : null}
