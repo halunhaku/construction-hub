@@ -435,7 +435,6 @@ export function RoadDiagram({
       along: alongAt(carriage.zones, 1, Math.min(50, carriage.zones[1]!.length)),
       type: guideType,
       side: 'work',
-      label: '导向标志',
       onRoad: true,
     })
     const bufferStart = alongAt(carriage.zones, 2, 0)
@@ -445,7 +444,6 @@ export function RoadDiagram({
       along: bufferStart,
       type: 'fence',
       side: 'work',
-      label: '路栏',
       signAlong: bufferStart + bufferTravel * (SIGN_SIZE + 22),
       onRoad: true,
     })
