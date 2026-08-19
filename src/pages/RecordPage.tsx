@@ -15,7 +15,7 @@ import ExcelImportButton from '../components/ExcelImportButton'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import ZoneCard from '../components/ZoneCard'
 import { compressImage, watermarkImage } from '../image'
-import { buildExportPage, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
+import { buildExportPages, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
 import { buildZones, mirrorZones, parseZoneParams, stake, zoneExtent } from '../zone/utils'
 import { directionLabel, PHASE_COLORS, PHASE_SHORT, PHASES, type Phase, type Photo, type RecordItem } from '../types'
 import { formatTime, uid } from '../util'
@@ -173,14 +173,17 @@ export default function RecordPage({ id }: { id: string }) {
     }
   }
 
-  /** 把当前作业区布置图渲染成 A4 横向 JPG（3508×2480，与「导出图纸 JPG」一致） */
-  async function buildDiagramBlob(): Promise<Blob | null> {
+  /** 把当前作业区布置渲染成 A4 纵向 JPG（布置图 1～2 张 + 一览表，与「导出图纸 JPG」一致） */
+  async function buildExportBlobs(): Promise<{ diagrams: { name: string; blob: Blob }[]; table: Blob } | null> {
     if (!zoneParams) return null
-    const svg = document.querySelector<SVGSVGElement>('.diagram-stage .roadSvg')
-    if (!svg) return null
+    const svgs = [...document.querySelectorAll<SVGSVGElement>('.diagram-stage .roadSvg')]
+    if (svgs.length === 0) return null
     const zones = buildZones(zoneParams)
-    const page = buildExportPage({
-      ...snapshotDiagram(svg),
+    const pages = buildExportPages({
+      diagrams: svgs.map((svg) => ({
+        ...snapshotDiagram(svg),
+        caption: !zoneParams.doubleSide ? '' : svg.getAttribute('data-direction') === 'down' ? '下行' : '上行',
+      })),
       params: zoneParams,
       zones,
       signRows: zoneParams.doubleSide
@@ -188,8 +191,19 @@ export default function RecordPage({ id }: { id: string }) {
         : signSchedule(zones, zoneParams.direction, zoneParams.speed),
       total: zones.reduce((sum, zone) => sum + zone.length, 0),
       doubleSide: zoneParams.doubleSide,
+      orientation: 'portrait',
     })
-    return renderPageToBlob(page, 3508, 2480)
+    const [diagramBlobs, table] = await Promise.all([
+      Promise.all(pages.diagramPages.map((page) => renderPageToBlob(page, 2480, 3508))),
+      renderPageToBlob(pages.tablePage, 2480, 3508),
+    ])
+    const diagrams = diagramBlobs.map((blob, index) => ({
+      name: zoneParams.doubleSide
+        ? (index === 0 ? '作业区布置图-上行.jpg' : '作业区布置图-下行.jpg')
+        : '作业区布置图.jpg',
+      blob,
+    }))
+    return { diagrams, table }
   }
 
   async function downloadAll() {
@@ -208,12 +222,13 @@ export default function RecordPage({ id }: { id: string }) {
     try {
       const zip = new JSZip()
       let diagramIncluded = false
-      // 先放作业区布置图，再放三阶段照片
+      // 先放作业区布置图与一览表，再放三阶段照片
       if (zoneParams) {
         try {
-          const diagram = await buildDiagramBlob()
-          if (diagram) {
-            zip.file('作业区布置图.jpg', diagram)
+          const exported = await buildExportBlobs()
+          if (exported) {
+            for (const item of exported.diagrams) zip.file(item.name, item.blob)
+            zip.file('作业区布置表.jpg', exported.table)
             diagramIncluded = true
           }
         } catch {
@@ -244,7 +259,7 @@ export default function RecordPage({ id }: { id: string }) {
       setTimeout(() => URL.revokeObjectURL(url), 1000)
       const parts = [
         all.length ? `${all.length} 张照片` : '',
-        diagramIncluded ? '作业区布置图' : '',
+        diagramIncluded ? '作业区布置图与一览表' : '',
       ].filter(Boolean)
       showFlash(`已打包下载 ${parts.join('和')}`)
     } catch (reason) {

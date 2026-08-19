@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { RoadDiagram } from '../zone/RoadDiagram'
+import { ZoneDiagrams } from '../zone/RoadDiagram'
 import { buildZones, defaults, mirrorZones, stake, zoneExtent } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 import type { ZoneParams } from '../types'
@@ -253,7 +253,7 @@ export default function ZoneForm({
                 ? ` · 整体影响 ${stake(extent.min)}—${stake(extent.max)}（${extent.span.toLocaleString()}m）`
                 : ''}
             </p>
-            <RoadDiagram
+            <ZoneDiagrams
               zones={zones}
               direction={form.direction}
               workSide={form.workSide}
@@ -261,6 +261,7 @@ export default function ZoneForm({
               zoom={1}
               coneGap={form.coneGap}
               speed={form.speed}
+              vertical
             />
           </div>
         </>

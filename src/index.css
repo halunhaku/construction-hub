@@ -225,7 +225,8 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .diagram-tools svg { width: 15px; height: 15px; }
 .zone-export { justify-content: flex-end; padding: 10px 12px; border-top: 1px solid var(--line); background: #fbfcfd; }
 .diagramScroll { overflow: auto; background-color: #fff; }
-.roadSvg { height: 560px; display: block; }
+.roadSvg { display: block; width: min(100%, 560px); height: auto; margin: 0 auto; }
+.roadSvg svg { width: unset; height: unset; flex: none; }
 .drawing-empty { min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed #bbc6d3; border-radius: 7px; background: var(--surface-soft); text-align: center; }
 .drawing-empty > svg { width: 34px; height: 34px; color: var(--blue-600); }
 .drawing-empty h2 { margin: 16px 0 6px; font-size: 18px; }
@@ -355,6 +356,8 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .advanced summary { padding: 13px 0; color: var(--blue-700); cursor: pointer; font-size: 12px; }
 .advanced-body { padding-top: 6px; }
 .zone-form-preview { overflow: auto; margin: 14px 0; border: 1px solid var(--line); border-radius: 7px; }
+.zone-preview-inline { margin-top: 12px; max-height: 1100px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
+.zone-preview-inline .roadSvg { width: min(100%, 580px); height: auto; margin: 0 auto; }
 .zone-table { overflow: auto; padding: 16px; border-top: 1px solid var(--line); }
 .zone-table h3 { margin: 0 0 10px; font-size: 14px; }
 table { width: 100%; border-collapse: collapse; }
@@ -401,7 +404,7 @@ th { color: var(--muted); background: var(--surface-soft); }
   .workspace-heading { flex-direction: column; }
   .workspace-actions { width: 100%; }
   .workspace-actions .btn { flex: 1; }
-  .roadSvg { height: 440px; }
+  .roadSvg { width: min(100%, 420px); height: auto; }
   .phase-workspace-grid { grid-template-columns: 1fr; }
   .record-inspector { display: block; border: 0; border-top: 1px solid var(--line); }
   .form-row { grid-template-columns: 1fr; }
@@ -433,3 +436,41 @@ th { color: var(--muted); background: var(--surface-soft); }
 .zone-detail-head small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
 
 .readonly-stake input { color: var(--muted); background: var(--line-soft, #f2f5f8); }
+
+/* ── 布控区域详情：左侧纵向布置图 + 右侧表格 ── */
+.zone-card-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.zone-stage-vertical { min-height: 0; overflow: hidden; border-right: 1px solid var(--line); }
+.zone-stage-vertical .diagramScroll { max-height: 760px; overflow: auto; background: #fff; }
+.roadSvg-vertical { width: min(100%, 560px); height: auto; }
+.diagramScroll .roadSvg-vertical + .diagram-lane-head,
+.diagram-lane-head + .roadSvg-vertical { margin-top: 8px; }
+.diagramScroll .roadSvg-vertical { margin-bottom: 8px; }
+.diagram-lane-head {
+  margin: 10px 12px 4px;
+  color: #202a3a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.diagram-lane-head + .diagramScroll { margin-top: 0; }
+.diagram-lane-head:first-child { margin-top: 8px; }
+.zone-tables { min-width: 0; display: flex; flex-direction: column; background: #fff; }
+.zone-tables .zone-table { border-top: 1px solid var(--line); flex: 1 1 auto; }
+
+@media (max-width: 900px) {
+  .zone-card-body { grid-template-columns: 1fr; }
+  .zone-stage-vertical { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+
+/* ── 标志牌 SVG 展示页 ── */
+.signs-page { max-width: 1220px; }
+.signs-intro { margin: 0 2px 18px; color: var(--muted); font-size: 13px; }
+.signs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
+.sign-card { display: flex; flex-direction: column; overflow: hidden; }
+.sign-preview { aspect-ratio: 1; display: grid; place-items: center; padding: 16px; background: #fff; }
+.sign-preview svg { width: 100%; height: 100%; max-height: 190px; }
+.sign-foot { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-top: 1px solid var(--line); background: var(--surface-soft); }
+.sign-foot strong { color: var(--ink); font-size: 13px; }
+.sign-copy { width: 100%; justify-content: center; }
+.sign-copy svg { width: 14px; height: 14px; }
+.sign-copy.is-copied { color: #117048; border-color: #bfe1d0; background: var(--green-soft); }
+.sign-copy.is-copied:hover { border-color: #bfe1d0; background: var(--green-soft); }

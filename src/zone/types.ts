@@ -2,7 +2,7 @@
 
 export type Direction = 'up' | 'down';
 export type WorkSide = 'roadside' | 'median';
-export type SignType = 'construction1600' | 'construction800' | 'length' | 'smart' | 'limit80' | 'limit60' | 'limit40' | 'laneLeft' | 'laneRight' | 'noOvertake' | 'arrowLeft' | 'arrowRight' | 'end60' | 'end40' | 'endOvertake';
+export type SignType = 'construction1600' | 'construction800' | 'length' | 'smart' | 'limit80' | 'limit60' | 'limit40' | 'laneLeft' | 'laneRight' | 'noOvertake' | 'arrowLeft' | 'arrowRight' | 'end60' | 'end40' | 'endOvertake' | 'fence';
 export type ExportFileType = 'png' | 'jpg' | 'pdf';
 
 export interface Params {
@@ -52,4 +52,6 @@ export interface TableConfig {
   headerHeight?: number;
   fontSize?: number;
   titleFontSize?: number;
+  /** 指定后按此总高度拉伸标题/表头/行，用于铺满 A4 */
+  height?: number;
 }

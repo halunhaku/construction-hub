@@ -51,41 +51,60 @@ export function signScheduleDouble(zones: Zone[], direction: Direction, speed: n
 
 export function exportTable({
   x, y, width, title, headers, rows, columnWidths,
-  titleHeight = 28, rowHeight = 28, headerHeight = 30,
-  fontSize = 10, titleFontSize = 12,
+  titleHeight = 32, rowHeight = 28, headerHeight = 30,
+  fontSize, titleFontSize, height,
 }: TableConfig): string {
-  const offsets = columnWidths.reduce<number[]>((list, value, index) => {
-    list.push((list[index] ?? 0) + value);
+  if (height && height > 0 && rows.length > 0) {
+    const base = titleHeight + headerHeight + rows.length * rowHeight;
+    const scale = height / base;
+    const cap = Math.min(Math.max(scale, 0.9), 1.45);
+    titleHeight = Math.round(titleHeight * cap);
+    headerHeight = Math.round(headerHeight * cap);
+    rowHeight = (height - titleHeight - headerHeight) / rows.length;
+  }
+
+  const fs = fontSize ?? Math.max(11, Math.min(14.5, rowHeight * 0.36));
+  const tfs = titleFontSize ?? Math.max(13, Math.min(16, titleHeight * 0.42));
+  const offsets = columnWidths.reduce<number[]>((list, value) => {
+    list.push((list[list.length - 1] ?? 0) + value);
     return list;
   }, [0]);
-  const height = titleHeight + headerHeight + rows.length * rowHeight;
+  const tableH = titleHeight + headerHeight + rows.length * rowHeight;
 
   const verticals = offsets.slice(1, -1).map(offset =>
-    `<line x1="${x + offset}" y1="${y + titleHeight}" x2="${x + offset}" y2="${y + height}"/>`
+    `<line x1="${x + offset}" y1="${y + titleHeight}" x2="${x + offset}" y2="${y + tableH}"/>`
   ).join('');
-
+  const titleRule = `<line x1="${x}" y1="${y + titleHeight}" x2="${x + width}" y2="${y + titleHeight}"/>`;
   const horizontals = Array.from({ length: rows.length + 1 }, (_, index) =>
     `<line x1="${x}" y1="${y + titleHeight + headerHeight + index * rowHeight}" x2="${x + width}" y2="${y + titleHeight + headerHeight + index * rowHeight}"/>`
   ).join('');
 
-  const cellBaseline = (h: number, s: number) => Math.round((h - s) / 2 + s * 0.82);
+  const cellBaseline = (h: number, s: number) => (h - s) / 2 + s * 0.82;
   const cellText = (cells: string[], rowY: number, fontWeight = '400', fill = '#1d1d1f') =>
     cells.map((cell, index) =>
-      `<text x="${x + offsets[index]! + columnWidths[index]! / 2}" y="${rowY}" text-anchor="middle" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}">${xmlText(cell)}</text>`
+      `<text x="${x + offsets[index]! + columnWidths[index]! / 2}" y="${rowY}" text-anchor="middle" font-size="${fs}" font-weight="${fontWeight}" fill="${fill}">${xmlText(cell)}</text>`
     ).join('');
+  const zebra = rows.map((_, index) =>
+    index % 2 === 1
+      ? `<rect x="${x}" y="${y + titleHeight + headerHeight + index * rowHeight}" width="${width}" height="${rowHeight}" fill="#f7f7f8"/>`
+      : '',
+  ).join('');
 
   return [
-    `<g stroke="#d1d1d6" stroke-width="1">`,
-    `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="4" fill="#fff"/>`,
-    `<rect x="${x}" y="${y}" width="${width}" height="${titleHeight}" rx="4" fill="#eaf2ff"/>`,
-    `<rect x="${x}" y="${y + titleHeight}" width="${width}" height="${headerHeight}" fill="#f5f5f7"/>`,
+    `<rect x="${x}" y="${y}" width="${width}" height="${tableH}" fill="#fff"/>`,
+    `<rect x="${x}" y="${y}" width="${width}" height="${titleHeight}" fill="#eef1f4"/>`,
+    `<rect x="${x}" y="${y + titleHeight}" width="${width}" height="${headerHeight}" fill="#f3f4f6"/>`,
+    zebra,
+    `<g stroke="#1d1d1f" stroke-width="0.7" fill="none">`,
+    titleRule,
     verticals,
     horizontals,
     `</g>`,
-    `<text x="${x + 12}" y="${y + cellBaseline(titleHeight, titleFontSize)}" font-size="${titleFontSize}" font-weight="700" fill="#007aff">${xmlText(title)}</text>`,
-    cellText(headers, y + titleHeight + cellBaseline(headerHeight, fontSize), '700', '#6e6e73'),
+    `<rect x="${x}" y="${y}" width="${width}" height="${tableH}" fill="none" stroke="#1d1d1f" stroke-width="1.1"/>`,
+    `<text x="${x + 12}" y="${y + cellBaseline(titleHeight, tfs)}" font-size="${tfs}" font-weight="700" fill="#1d1d1f">${xmlText(title)}</text>`,
+    cellText(headers, y + titleHeight + cellBaseline(headerHeight, fs), '700', '#3a3a3c'),
     rows.map((row, index) =>
-      cellText(row, y + titleHeight + headerHeight + index * rowHeight + cellBaseline(rowHeight, fontSize))
+      cellText(row, y + titleHeight + headerHeight + index * rowHeight + cellBaseline(rowHeight, fs))
     ).join(''),
   ].join('');
 }
@@ -203,55 +222,92 @@ export function downloadJpg(
   }, cleanup);
 }
 
-/* ── PDF 下载 ────────────────────────────────────────── */
+/** 连续下载多张图纸（PNG/JPG）。稍后触发第二张，避免浏览器拦截。 */
+export function downloadImages(
+  pages: { page: string; filename: string }[],
+  width: number,
+  height: number,
+  type: 'image/png' | 'image/jpeg',
+  onComplete?: () => void,
+): void {
+  const cleanup = () => onComplete?.();
+  Promise.all(pages.map((item) => renderPageToBlob(item.page, width, height, type)))
+    .then((blobs) => {
+      blobs.forEach((blob, index) => {
+        window.setTimeout(() => {
+          const a = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          a.href = url;
+          a.download = pages[index]!.filename;
+          a.click();
+          window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }, index * 450);
+      });
+      window.setTimeout(cleanup, pages.length * 450 + 200);
+    })
+    .catch(cleanup);
+}
 
-function buildPdf(jpeg: Uint8Array, imgW: number, imgH: number, pageW: number, pageH: number): Uint8Array {
+/* ── PDF 下载（支持多页） ─────────────────────────────── */
+
+function buildPdf(
+  images: { jpeg: Uint8Array; imgW: number; imgH: number }[],
+  pageW: number,
+  pageH: number,
+): Uint8Array {
   const enc = (s: string) => new TextEncoder().encode(s);
   const nl = '\n';
-
-  const obj1  = `1 0 obj${nl}<< /Type /Catalog /Pages 2 0 R >>${nl}endobj${nl}`;
-  const obj2  = `2 0 obj${nl}<< /Type /Pages /Kids [3 0 R] /Count 1 >>${nl}endobj${nl}`;
-  const obj3  = `3 0 obj${nl}<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> >> >>${nl}endobj${nl}`;
-  const stream = `q ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q`;
-  const obj4  = `4 0 obj${nl}<< /Length ${stream.length} >>${nl}stream${nl}${stream}${nl}endstream${nl}endobj${nl}`;
-  const obj5h = `5 0 obj${nl}<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>${nl}stream${nl}`;
-  const obj5f = `${nl}endstream${nl}endobj${nl}`;
-  const header = `%PDF-1.4${nl}`;
-
-  const objects = [obj1, obj2, obj3, obj4];
+  const chunks: Uint8Array[] = [];
+  let pos = 0;
+  const write = (data: string | Uint8Array) => {
+    const bytes = typeof data === 'string' ? enc(data) : data;
+    chunks.push(bytes);
+    pos += bytes.length;
+  };
   const offsets: number[] = [];
-  let pos = enc(header).length;
-  for (const o of objects) { offsets.push(pos); pos += enc(o).length; }
-  offsets.push(pos);
-  pos += enc(obj5h).length;
-  pos += jpeg.length;
-  pos += enc(obj5f).length;
+  const beginObj = () => { offsets.push(pos); };
 
-  const entries = [
-    '0000000000 65535 f ' + nl,
-    ...offsets.map(o => String(o).padStart(10, '0') + ' 00000 n ' + nl),
-  ];
-  const xref = 'xref' + nl + '0 6' + nl + entries.join('');
+  write(`%PDF-1.4${nl}`);
+  beginObj();
+  write(`1 0 obj${nl}<< /Type /Catalog /Pages 2 0 R >>${nl}endobj${nl}`);
+  const pageIds = images.map((_, index) => 3 + index * 3);
+  beginObj();
+  write(`2 0 obj${nl}<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${images.length} >>${nl}endobj${nl}`);
+
+  images.forEach((image, index) => {
+    const pageId = 3 + index * 3;
+    const contentId = pageId + 1;
+    const imageId = pageId + 2;
+    const stream = `q ${pageW} 0 0 ${pageH} 0 0 cm /Im${index} Do Q`;
+    beginObj();
+    write(`${pageId} 0 obj${nl}<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents ${contentId} 0 R /Resources << /XObject << /Im${index} ${imageId} 0 R >> >> >>${nl}endobj${nl}`);
+    beginObj();
+    write(`${contentId} 0 obj${nl}<< /Length ${stream.length} >>${nl}stream${nl}${stream}${nl}endstream${nl}endobj${nl}`);
+    beginObj();
+    write(`${imageId} 0 obj${nl}<< /Type /XObject /Subtype /Image /Width ${image.imgW} /Height ${image.imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.jpeg.length} >>${nl}stream${nl}`);
+    write(image.jpeg);
+    write(`${nl}endstream${nl}endobj${nl}`);
+  });
+
   const xrefOff = pos;
-  pos += enc(xref).length;
-  const trailer = `trailer${nl}<< /Size 6 /Root 1 0 R >>${nl}startxref${nl}${xrefOff}${nl}%%EOF${nl}`;
+  const entries = [
+    `0000000000 65535 f ${nl}`,
+    ...offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n ${nl}`),
+  ];
+  write(`xref${nl}0 ${offsets.length + 1}${nl}${entries.join('')}`);
+  write(`trailer${nl}<< /Size ${offsets.length + 1} /Root 1 0 R >>${nl}startxref${nl}${xrefOff}${nl}%%EOF${nl}`);
 
-  const result = new Uint8Array(pos + enc(trailer).length);
+  const result = new Uint8Array(pos);
   let offset = 0;
-  const put = (part: string) => { const b = enc(part); result.set(b, offset); offset += b.length; };
-  put(header);
-  objects.forEach(put);
-  put(obj5h);
-  result.set(jpeg, offset); offset += jpeg.length;
-  put(obj5f);
-  put(xref);
-  put(trailer);
-
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
   return result;
 }
 
 export function downloadPdf(
-  page: string,
+  pages: string | string[],
   imgW: number,
   imgH: number,
   pageW: number,
@@ -259,86 +315,250 @@ export function downloadPdf(
   filename: string,
   onComplete?: () => void,
 ): void {
+  const list = Array.isArray(pages) ? pages : [pages];
   const cleanup = () => onComplete?.();
-  renderSvg(page, imgW, imgH, canvas => {
-    canvas.toBlob(jpegBlob => {
-      if (!jpegBlob) { cleanup(); return; }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const pdfBytes = buildPdf(new Uint8Array(reader.result as ArrayBuffer), imgW, imgH, pageW, pageH);
-        const a = document.createElement('a');
-        const url = URL.createObjectURL(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }));
-        a.href = url;
-        a.download = filename;
-        a.click();
-        setTimeout(() => { URL.revokeObjectURL(url); cleanup(); }, 1000);
-      };
-      reader.onerror = cleanup;
-      reader.readAsArrayBuffer(jpegBlob);
-    }, 'image/jpeg', 0.92);
-  }, cleanup);
+  Promise.all(list.map((page) => renderPageToBlob(page, imgW, imgH, 'image/jpeg')))
+    .then(async (blobs) => {
+      const images = await Promise.all(blobs.map(async (blob) => ({
+        jpeg: new Uint8Array(await blob.arrayBuffer()),
+        imgW,
+        imgH,
+      })));
+      const pdfBytes = buildPdf(images, pageW, pageH);
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }));
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); cleanup(); }, 1000);
+    })
+    .catch(cleanup);
 }
 
-/* ── A4 横向图纸组装（纯函数，供台账内嵌导出） ────────── */
+/* ── A4 图纸组装（布置图 1～2 页 + 一览表） ─────────── */
+
+export interface ExportDiagram {
+  svgViewBox: string
+  svgInner: string
+  /** 双侧占路时为「上行」或「下行」；单侧可空 */
+  caption?: string
+}
 
 export interface ExportPageInput {
-  /** 道路图的 viewBox（字符串） */
-  svgViewBox: string
-  /** 道路图的内部 XML（svg.innerHTML，含全部分区/标志/锥桶） */
-  svgInner: string
+  /** 道路图的 viewBox（字符串）；无 diagrams 时使用 */
+  svgViewBox?: string
+  /** 道路图的内部 XML（svg.innerHTML）；无 diagrams 时使用 */
+  svgInner?: string
+  /** 多张布置图（双侧占路：上行、下行各一张） */
+  diagrams?: ExportDiagram[]
   /** 生成布置图时使用的参数 */
   params: Params
   zones: Zone[]
   signRows: [number, string, string, string][]
   /** 布置总长度（米） */
   total: number
-  /** 双侧占路：分区表/时刻表改双列（上行/下行桩号并排），避免行数翻倍超出 A4 高度 */
+  /** 双侧占路：分区表/时刻表改双列（上行/下行桩号并排） */
   doubleSide?: boolean
+  /** 页面方向：portrait=A4 纵向（默认），landscape=A4 横向 */
+  orientation?: 'landscape' | 'portrait'
 }
 
-/** 组装 A4 横向（297×210mm）图纸页：标题 + 道路图 + 两张明细表 + 页脚 */
-export function buildExportPage({ svgViewBox, svgInner, params, zones, signRows, total, doubleSide = false }: ExportPageInput): string {
+function resolveDiagrams(input: ExportPageInput): ExportDiagram[] {
+  if (input.diagrams && input.diagrams.length > 0) return input.diagrams
+  return [{ svgViewBox: input.svgViewBox ?? '', svgInner: input.svgInner ?? '', caption: '' }]
+}
+
+const A4 = {
+  portrait: { w: 794, h: 1123 },
+  landscape: { w: 1123, h: 794 },
+} as const
+
+function scaleColumns(weights: number[], width: number): number[] {
+  const sum = weights.reduce((acc, value) => acc + value, 0)
+  const cols = weights.map((weight) => Math.floor((width * weight) / sum * 10) / 10)
+  cols[cols.length - 1] = (cols[cols.length - 1] ?? 0) + width - cols.reduce((acc, value) => acc + value, 0)
+  return cols
+}
+
+function pageMetrics(orientation: 'landscape' | 'portrait') {
+  const { w: pageW, h: pageH } = A4[orientation]
+  const inner = 22
+  const titleH = 68
+  const footerH = 38
+  const pad = 12
+  return {
+    pageW,
+    pageH,
+    inner,
+    titleH,
+    footerH,
+    contentX: inner + pad,
+    contentY: inner + titleH + pad,
+    contentW: pageW - (inner + pad) * 2,
+    contentH: pageH - inner - titleH - pad - footerH - inner - 6,
+  }
+}
+
+function wrapPage(orientation: 'landscape' | 'portrait', body: string): string {
+  const { w, h } = A4[orientation]
+  const mmW = orientation === 'portrait' ? 210 : 297
+  const mmH = orientation === 'portrait' ? 297 : 210
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${mmW}mm" height="${mmH}mm" viewBox="0 0 ${w} ${h}">${body}</svg>`
+}
+
+function drawingChrome(
+  m: ReturnType<typeof pageMetrics>,
+  title: string,
+  subtitle: string,
+  pageNo: number,
+  pageCount: number,
+): string {
+  const { pageW, pageH, inner, titleH, footerH } = m
+  const outer = 16
+  const footerY = pageH - inner - footerH
+  return [
+    `<rect width="${pageW}" height="${pageH}" fill="#fff"/>`,
+    `<rect x="${outer}" y="${outer}" width="${pageW - outer * 2}" height="${pageH - outer * 2}" fill="none" stroke="#1d1d1f" stroke-width="1.8"/>`,
+    `<rect x="${inner}" y="${inner}" width="${pageW - inner * 2}" height="${pageH - inner * 2}" fill="none" stroke="#1d1d1f" stroke-width="0.7"/>`,
+    `<line x1="${inner}" y1="${inner + titleH}" x2="${pageW - inner}" y2="${inner + titleH}" stroke="#1d1d1f" stroke-width="0.7"/>`,
+    `<line x1="${inner}" y1="${footerY}" x2="${pageW - inner}" y2="${footerY}" stroke="#1d1d1f" stroke-width="0.7"/>`,
+    `<text x="${inner + 14}" y="${inner + 26}" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="20" font-weight="700" fill="#1d1d1f">${xmlText(title)}</text>`,
+    ...subtitle.split('\n').map((line, index) =>
+      `<text x="${inner + 14}" y="${inner + 44 + index * 14}" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="10" fill="#4a4a4f">${xmlText(line)}</text>`
+    ),
+    `<text x="${pageW - inner - 12}" y="${inner + 28}" text-anchor="end" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="11" fill="#6e6e73">图 ${pageNo}　共 ${pageCount} 页</text>`,
+    `<text x="${inner + 12}" y="${footerY + 16}" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="8.5" fill="#6e6e73">锥桶数量仅表示布置走向，现场按设定的 1-4m 间距放样。</text>`,
+    `<text x="${inner + 12}" y="${footerY + 28}" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="8.5" fill="#6e6e73">正式实施前，请依据道路等级、设计速度、施工类型及当地现行规范复核。</text>`,
+    `<text x="${pageW - inner - 12}" y="${footerY + 22}" text-anchor="end" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="9" fill="#6e6e73">A4 ${pageW > pageH ? '横向' : '纵向'} · 比例示意</text>`,
+  ].join('')
+}
+
+interface ExportModel {
+  primaryDir: string
+  mirrorDir: string
+  mirrored: Zone[] | null
+  zoneRows: string[][]
+  exportSignRows: string[][]
+  subtitle: string
+  orientation: 'landscape' | 'portrait'
+}
+
+function buildExportModel({
+  params, zones, signRows, total, doubleSide = false, orientation = 'portrait',
+}: ExportPageInput): ExportModel {
   const primaryDir = params.direction === 'down' ? '下行' : '上行'
   const mirrorDir = primaryDir === '上行' ? '下行' : '上行'
-  // 双侧占路：两车道分区行数翻倍会超出 A4 高度被裁，改为每区一行、
-  // 上行/下行起止桩号并排；时刻表同理（上行桩号/下行桩号两列）。
   const mirrored = doubleSide ? mirrorZones(zones, params.direction) : null
   const extent = zoneExtent(zones, mirrored ?? undefined)
   const lengthSummary = doubleSide
     ? `单侧长度：${total}m　整体影响：${stake(extent.min)}—${stake(extent.max)}（${extent.span}m）`
     : `布置总长度：${total}m`
-  const zoneRows: string[][] = mirrored
-    ? zones.map((z, i) => [
-        String(i + 1), z.name, `${z.length}m`,
-        stake(z.start), stake(z.end),
-        stake(mirrored[i]!.start), stake(mirrored[i]!.end),
+  const zoneRows = mirrored
+    ? zones.map((zone, index) => [
+        String(index + 1), zone.name, `${zone.length}m`,
+        stake(zone.start), stake(zone.end),
+        stake(mirrored[index]!.start), stake(mirrored[index]!.end),
       ])
-    : zones.map((z, i) => [String(i + 1), z.name, `${z.length}m`, stake(z.start), stake(z.end)])
+    : zones.map((zone, index) => [String(index + 1), zone.name, `${zone.length}m`, stake(zone.start), stake(zone.end)])
   const primaryItems = signRowsOf(zones, params.speed)
   const mirrorItems = mirrored ? signRowsOf(mirrored, params.speed) : null
-  const exportSignRows: string[][] = mirrored
-    ? primaryItems.map((item, i) => [
-        String(i + 1), item[0], stake(item[1]), stake(mirrorItems![i]![1]), item[2],
+  const exportSignRows = mirrored
+    ? primaryItems.map((item, index) => [
+        String(index + 1), item[0], stake(item[1]), stake(mirrorItems![index]![1]), item[2],
       ])
-    : signRows.map(r => [String(r[0]), r[1], r[2], r[3]])
+    : signRows.map((row) => [String(row[0]), row[1], row[2], row[3]])
+  const subtitle = `作业区起点：${params.start}　方向：${doubleSide ? '上/下行' : primaryDir}　施工位置：${params.workSide === 'median' ? '中央分隔带' : '路侧'}${doubleSide ? '（双侧占路）' : ''}\n${lengthSummary}`
+  return { primaryDir, mirrorDir, mirrored, zoneRows, exportSignRows, subtitle, orientation }
+}
 
-  const zoneTable = exportTable({
-    x: 30, y: 438, width: 500,
-    title: '1. 各区域起止点',
-    headers: mirrored
-      ? ['序号', '分区名称', '长度', `${primaryDir}起点`, `${primaryDir}终点`, `${mirrorDir}起点`, `${mirrorDir}终点`]
-      : ['序号', '分区名称', '长度', '起点桩号', '终点桩号'],
-    rows: zoneRows,
-    columnWidths: mirrored ? [40, 96, 60, 76, 76, 76, 76] : [44, 116, 76, 132, 132],
-  })
+/** 布置图页：道路图铺满 A4 图框 */
+export function buildDiagramPage(
+  input: ExportPageInput,
+  diagram: ExportDiagram,
+  pageNo: number,
+  pageCount: number,
+): string {
+  const model = buildExportModel(input)
+  const m = pageMetrics(model.orientation)
+  const title = diagram.caption
+    ? `高速公路作业区布置图（${diagram.caption}）`
+    : '高速公路作业区布置图'
+  return wrapPage(model.orientation, [
+    drawingChrome(m, title, model.subtitle, pageNo, pageCount),
+    `<rect x="${m.contentX}" y="${m.contentY}" width="${m.contentW}" height="${m.contentH}" fill="#f8fafc"/>`,
+    `<svg x="${m.contentX}" y="${m.contentY}" width="${m.contentW}" height="${m.contentH}" viewBox="${xmlText(diagram.svgViewBox)}" preserveAspectRatio="xMidYMid meet">${diagram.svgInner}</svg>`,
+  ].join(''))
+}
 
-  const signTable = exportTable({
-    x: 548, y: 438, width: 545,
-    title: '2. 各标志牌位置',
-    headers: mirrored ? ['序号', '标志牌名称', `${primaryDir}桩号`, `${mirrorDir}桩号`, '位置说明'] : ['序号', '标志牌名称', '设置桩号', '位置说明'],
-    rows: exportSignRows,
-    columnWidths: mirrored ? [40, 150, 90, 90, 175] : [44, 190, 112, 199],
-  })
+/** 第 2 页：两张明细表按行数比例铺满 A4 */
+export function buildTablePage(input: ExportPageInput): string {
+  const model = buildExportModel(input)
+  const m = pageMetrics(model.orientation)
+  const zoneHeaders = model.mirrored
+    ? ['序号', '分区名称', '长度', `${model.primaryDir}起点`, `${model.primaryDir}终点`, `${model.mirrorDir}起点`, `${model.mirrorDir}终点`]
+    : ['序号', '分区名称', '长度', '起点桩号', '终点桩号']
+  const signHeaders = model.mirrored
+    ? ['序号', '标志牌名称', `${model.primaryDir}桩号`, `${model.mirrorDir}桩号`, '位置说明']
+    : ['序号', '标志牌名称', '设置桩号', '位置说明']
+  const zoneWeights = model.mirrored ? [40, 90, 56, 86, 86, 86, 86] : [48, 140, 80, 180, 180]
+  const signWeights = model.mirrored ? [40, 160, 90, 90, 180] : [48, 220, 140, 240]
+  const gap = 16
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 1123 794"><rect width="1123" height="794" fill="#fff"/><rect x="30" y="21" width="4" height="17" fill="#ff9f0a"/><text x="40" y="34" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="20" font-weight="700" fill="#1d1d1f">高速公路作业区布置图</text><text x="40" y="55" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="10" fill="#6e6e73">作业区起点：${xmlText(params.start)}　方向：${doubleSide ? '上/下行' : (params.direction === 'up' ? '上行' : '下行')}　施工位置：${params.workSide === 'median' ? '中央分隔带' : '路侧'}${doubleSide ? '（双侧占路）' : ''}　${xmlText(lengthSummary)}</text><rect x="30" y="68" width="1063" height="350" rx="5" fill="#f8fafc" stroke="#9fb0bf"/><svg x="36" y="74" width="1051" height="338" viewBox="${xmlText(svgViewBox)}" preserveAspectRatio="xMidYMid meet">${svgInner}</svg><g font-family="PingFang SC,Microsoft YaHei,sans-serif">${zoneTable}${signTable}</g><line x1="30" y1="764" x2="1093" y2="764" stroke="#9fb0bf"/><text x="30" y="775" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="8.5" fill="#7b8995">锥桶数量仅表示布置走向，现场按设定的 1-4m 间距放样。</text><text x="30" y="786" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="8.5" fill="#7b8995">正式实施前，请依据道路等级、设计速度、施工类型及当地现行规范复核。</text><text x="1093" y="781" text-anchor="end" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="9" fill="#7b8995">A4 横向 · 比例示意</text></svg>`
+  let tables: string
+  if (model.orientation === 'landscape') {
+    const colW = (m.contentW - gap) / 2
+    tables = [
+      exportTable({
+        x: m.contentX, y: m.contentY, width: colW, height: m.contentH,
+        title: '表 1　各区域起止点',
+        headers: zoneHeaders,
+        rows: model.zoneRows,
+        columnWidths: scaleColumns(zoneWeights, colW),
+      }),
+      exportTable({
+        x: m.contentX + colW + gap, y: m.contentY, width: colW, height: m.contentH,
+        title: '表 2　各标志牌位置',
+        headers: signHeaders,
+        rows: model.exportSignRows,
+        columnWidths: scaleColumns(signWeights, colW),
+      }),
+    ].join('')
+  } else {
+    const zoneWeight = model.zoneRows.length + 2.4
+    const signWeight = model.exportSignRows.length + 2.4
+    const zoneH = (m.contentH - gap) * zoneWeight / (zoneWeight + signWeight)
+    const signH = m.contentH - gap - zoneH
+    tables = [
+      exportTable({
+        x: m.contentX, y: m.contentY, width: m.contentW, height: zoneH,
+        title: '表 1　各区域起止点',
+        headers: zoneHeaders,
+        rows: model.zoneRows,
+        columnWidths: scaleColumns(zoneWeights, m.contentW),
+      }),
+      exportTable({
+        x: m.contentX, y: m.contentY + zoneH + gap, width: m.contentW, height: signH,
+        title: '表 2　各标志牌位置',
+        headers: signHeaders,
+        rows: model.exportSignRows,
+        columnWidths: scaleColumns(signWeights, m.contentW),
+      }),
+    ].join('')
+  }
+
+  const diagrams = resolveDiagrams(input)
+  const pageCount = diagrams.length + 1
+  return wrapPage(model.orientation, [
+    drawingChrome(m, '高速公路作业区一览表', model.subtitle, pageCount, pageCount),
+    `<g font-family="PingFang SC,Microsoft YaHei,sans-serif">${tables}</g>`,
+  ].join(''))
+}
+
+export function buildExportPages(input: ExportPageInput): { diagramPages: string[]; tablePage: string } {
+  const diagrams = resolveDiagrams(input)
+  const pageCount = diagrams.length + 1
+  return {
+    diagramPages: diagrams.map((diagram, index) => buildDiagramPage(input, diagram, index + 1, pageCount)),
+    tablePage: buildTablePage(input),
+  }
 }

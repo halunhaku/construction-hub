@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { signSchedule, signScheduleDouble } from '../src/zone/export.ts'
+import { buildExportPages, signSchedule, signScheduleDouble } from '../src/zone/export.ts'
 import {
   buildZones,
   defaults,
@@ -184,5 +184,83 @@ describe('限速牌与标志位置', () => {
     assert.equal(rows.length, 18)
     assert.match(rows[0]![3], /^上行/)
     assert.match(rows[9]![3], /^下行/)
+  })
+})
+
+describe('A4 两页导出', () => {
+  function pages(doubleSide = false) {
+    const params = { ...defaults, doubleSide, workSide: doubleSide ? 'median' as const : defaults.workSide }
+    const zones = buildZones(params)
+    return buildExportPages({
+      diagrams: doubleSide
+        ? [
+            { svgViewBox: '0 0 400 1000', svgInner: '<g id="road-up"/>', caption: '上行' },
+            { svgViewBox: '0 0 400 1000', svgInner: '<g id="road-down"/>', caption: '下行' },
+          ]
+        : [{ svgViewBox: '0 0 400 1000', svgInner: '<g id="road-fixture"/>' }],
+      params,
+      zones,
+      signRows: signSchedule(zones, params.direction, params.speed),
+      total: zones.reduce((sum, zone) => sum + zone.length, 0),
+      doubleSide,
+      orientation: 'portrait',
+    })
+  }
+
+  it('拆成布置图与一览表两页，均为 A4 纵向', () => {
+    const { diagramPages, tablePage } = pages()
+    const diagramPage = diagramPages[0]!
+    assert.equal(diagramPages.length, 1)
+    assert.match(diagramPage, /width="210mm"/)
+    assert.match(diagramPage, /height="297mm"/)
+    assert.match(diagramPage, /viewBox="0 0 794 1123"/)
+    assert.match(tablePage, /viewBox="0 0 794 1123"/)
+    assert.match(diagramPage, /高速公路作业区布置图/)
+    assert.match(diagramPage, /图 1　共 2 页/)
+    assert.match(diagramPage, /id="road-fixture"/)
+    assert.doesNotMatch(diagramPage, /各区域起止点/)
+    assert.match(tablePage, /高速公路作业区一览表/)
+    assert.match(tablePage, /图 2　共 2 页/)
+    assert.match(tablePage, /表 1　各区域起止点/)
+    assert.match(tablePage, /表 2　各标志牌位置/)
+    assert.doesNotMatch(tablePage, /id="road-fixture"/)
+  })
+
+  it('布置图占用标题栏与页脚之间的整块图框', () => {
+    const { diagramPages } = pages()
+    assert.match(diagramPages[0]!, /<svg x="34" y="102" width="726" height="955"/)
+  })
+
+  it('一览表两张表拉高铺满图框', () => {
+    const { tablePage } = pages()
+    const heights = [...tablePage.matchAll(/stroke-width="1\.1"\/>/g)]
+    assert.equal(heights.length, 2)
+    const tableHeights = [...tablePage.matchAll(/<rect x="34" y="[\d.]+" width="726" height="([\d.]+)" fill="none" stroke="#1d1d1f" stroke-width="1\.1"\/>/g)]
+      .map((match) => Number(match[1]))
+    assert.equal(tableHeights.length, 2)
+    const filled = (tableHeights[0] ?? 0) + (tableHeights[1] ?? 0) + 16
+    assert.ok(Math.abs(filled - 955) < 1, `tables should fill 955px content, got ${filled}`)
+    assert.ok((tableHeights[0] ?? 0) > 250, 'zone table should be stretched')
+    assert.ok((tableHeights[1] ?? 0) > 350, 'sign table should be stretched')
+  })
+
+  it('双侧占路一览表并排上下行桩号，不翻倍行数', () => {
+    const { tablePage } = pages(true)
+    assert.match(tablePage, /上行起点/)
+    assert.match(tablePage, /下行桩号/)
+    assert.doesNotMatch(tablePage, /上行 · /)
+  })
+
+  it('双侧占路导出三页：上行图、下行图、一览表', () => {
+    const { diagramPages, tablePage } = pages(true)
+    assert.equal(diagramPages.length, 2)
+    assert.match(diagramPages[0]!, /布置图（上行）/)
+    assert.match(diagramPages[0]!, /图 1　共 3 页/)
+    assert.match(diagramPages[0]!, /id="road-up"/)
+    assert.doesNotMatch(diagramPages[0]!, /id="road-down"/)
+    assert.match(diagramPages[1]!, /布置图（下行）/)
+    assert.match(diagramPages[1]!, /图 2　共 3 页/)
+    assert.match(diagramPages[1]!, /id="road-down"/)
+    assert.match(tablePage, /图 3　共 3 页/)
   })
 })

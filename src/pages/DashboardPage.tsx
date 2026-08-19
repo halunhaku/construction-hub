@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, CircleAlert, Images, MapPin, Plus, Search, TrafficCone } from 'lucide-react'
+import { CalendarDays, CircleAlert, Images, MapPin, Plus, Search, Signpost, TrafficCone } from 'lucide-react'
 import { listRecords } from '../api'
 import AppHeader from '../components/AppHeader'
 import { PHASES, type RecordItem } from '../types'
@@ -148,6 +148,10 @@ export default function DashboardPage() {
             <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/zones')}>
               <TrafficCone />
               设置布控区域
+            </button>
+            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/signs')}>
+              <Signpost />
+              标志牌 SVG
             </button>
             <button className="btn btn-primary" onClick={() => (window.location.hash = '#/new')}>
               <Plus />
