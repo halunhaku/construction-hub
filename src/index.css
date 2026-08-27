@@ -66,7 +66,20 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .project-switcher-empty { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
 .icon-btn { width: 34px; height: 34px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
 .app-header .icon-btn:hover { background: rgba(255,255,255,.1); }
-.user-button { width: 34px; height: 34px; border: 0; border-radius: 50%; color: #fff; background: #1e62cc; font-size: 12px; cursor: pointer; }
+.user-button {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: #1e62cc;
+  font-size: 12px;
+  cursor: pointer;
+}
+.user-button svg { width: 14px; height: 14px; }
 
 .btn { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 13px; border: 1px solid transparent; border-radius: 7px; background: #fff; font-size: 13px; font-weight: 600; line-height: 1; cursor: pointer; transition: background-color .16s ease, border-color .16s ease, color .16s ease; }
 .btn svg { width: 15px; height: 15px; }
@@ -484,6 +497,10 @@ th { color: var(--muted); background: var(--surface-soft); }
 }
 
 .readonly-stake input { color: var(--muted); background: var(--line-soft, #f2f5f8); }
+.pin-hint { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.layout-lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.layout-actions, .guest-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 24px; }
+.login-form { max-width: 420px; }
 
 /* ── 布控区域详情：左侧纵向布置图 + 右侧表格 ── */
 .zone-card-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, ShieldCheck } from 'lucide-react'
-import { listProjects } from '../api'
+import { CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, LogIn, LogOut, ShieldCheck } from 'lucide-react'
+import { listProjects, logout } from '../api'
+import { useAuth } from '../auth'
 
 export default function AppHeader({
   trail,
@@ -12,10 +13,21 @@ export default function AppHeader({
   /** 用于项目切换器高亮匹配的项目名（默认取 project，详情页会传「项目名 · 路段」） */
   projectKey?: string
 }) {
+  const { user, setUser } = useAuth()
   const activeName = projectKey ?? project
   const [open, setOpen] = useState(false)
   const [projects, setProjects] = useState<{ name: string; count: number }[]>([])
   const wrapRef = useRef<HTMLDivElement>(null)
+
+  async function handleLogout() {
+    try {
+      await logout()
+    } catch {
+      /* 即使接口失败也清掉本地登录态 */
+    }
+    setUser(null)
+    window.location.hash = '#/'
+  }
 
   // 打开时拉取项目列表（每次刷新，保证新建项目立即可见）
   useEffect(() => {
@@ -60,7 +72,7 @@ export default function AppHeader({
         ))}
       </nav>
       <div className="app-header-tools">
-        {project ? (
+        {user && project ? (
           <div className="project-switcher-wrap" ref={wrapRef}>
             <button
               className="project-switcher"
@@ -98,9 +110,25 @@ export default function AppHeader({
             )}
           </div>
         ) : null}
-        <button className="icon-btn" aria-label="日历" onClick={() => (window.location.hash = '#/calendar')}><CalendarDays /></button>
-        <button className="icon-btn" aria-label="帮助" onClick={() => (window.location.hash = '#/help')}><CircleHelp /></button>
-        <button className="user-button" aria-label="用户菜单">User</button>
+        {user ? (
+          <button className="icon-btn" aria-label="日历" onClick={() => (window.location.hash = '#/calendar')}>
+            <CalendarDays />
+          </button>
+        ) : null}
+        <button className="icon-btn" aria-label="帮助" onClick={() => (window.location.hash = '#/help')}>
+          <CircleHelp />
+        </button>
+        {user ? (
+          <button className="user-button" title={`${user.username} · 退出`} aria-label="退出登录" onClick={() => void handleLogout()}>
+            <LogOut />
+            <span>{user.username}</span>
+          </button>
+        ) : (
+          <button className="user-button" aria-label="登录" onClick={() => (window.location.hash = '#/login')}>
+            <LogIn />
+            <span>登录</span>
+          </button>
+        )}
       </div>
     </header>
   )

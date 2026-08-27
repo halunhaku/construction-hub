@@ -3,7 +3,8 @@ import type { ImportRecordForm, Phase, RecordForm, RecordItem, ZoneFormData, Zon
 const BASE = '/api'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + url, init)
+  const headers = new Headers(init?.headers)
+  const res = await fetch(BASE + url, { ...init, headers, credentials: 'include' })
   if (!res.ok) {
     let message = `请求失败 (${res.status})`
     try {
@@ -15,6 +16,27 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(message)
   }
   return res.json() as Promise<T>
+}
+
+export interface AuthUser {
+  id: string
+  username: string
+}
+
+export function fetchMe(): Promise<{ user: AuthUser | null }> {
+  return request<{ user: AuthUser | null }>('/auth/me')
+}
+
+export function login(username: string, password: string): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export function logout(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/auth/logout', { method: 'POST' })
 }
 
 export interface ListQuery {

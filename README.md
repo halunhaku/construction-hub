@@ -12,7 +12,7 @@
 - **施工台账**：高速公路 → 路段 → 桩号 → 方向（上行 / 下行）。支持单条新建、编辑，以及 Excel 批量导入。
 - **三阶段影像**：每条记录按施工前、施工中、施工后上传照片（各阶段不限张数）。三阶段各至少 1 张才算资料完整。照片上传前会压缩；打包下载时带项目名、桩号、阶段和本地拍摄时间水印。
 - **作业区布置图**：按警告区、上游过渡区、缓冲区、作业区、下游过渡区、终止区计算桩号范围。支持路侧或中央分隔带；中央分隔带可勾选双侧占路（上下行 180° 对称布控）。可导出 PNG / JPG / PDF（A4：布置图 + 一览表；双侧占路再拆成上行、下行两张布置图），也可和三照一起打成 ZIP 档案。
-- **独立布控区域**：首页「设置布控区域」入口。只做布置图，不依赖施工记录，不填项目名称 / 高速 / 路段。库表预留了 `record_id`，目前没有关联 UI。列表页有入口二维码（扫开即新建）；每条详情页有该布控自己的码（扫开即看图导出）。
+- **独立布控区域**：未登录可打开布置图页（`#/layout`）填参、预览、导出，不入库。登录后可保存到 `zones` 表并进入详情。列表页入口码指向公开布置图页。项目台账、三照、已保存布控需登录。
 - **标志牌 SVG**：16 张高速公路养护作业区标志，可复制 SVG 源码。
 - **施工日历**：按日查看记录；蓝点有记录，绿点当天三照齐全。
 - **帮助中心**：使用步骤和常见问题。
@@ -97,6 +97,7 @@ npm run dev      # Web: http://localhost:5173
 npx wrangler d1 execute three-photos-db --local --file=schema.sql
 npx wrangler d1 execute three-photos-db --local --file=migrations/0003_indexes.sql
 npx wrangler d1 execute three-photos-db --local --file=migrations/0004_zones.sql
+npx wrangler d1 execute three-photos-db --local --file=migrations/0005_users.sql
 ```
 
 已有本地库若还没有 `work_location` / `end_stake` 列，再执行：
@@ -137,10 +138,13 @@ npm test
 npm run db:migrate:excel:remote
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0003_indexes.sql
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0004_zones.sql
+npx wrangler d1 execute three-photos-db --remote --file=migrations/0005_users.sql
 npm run deploy
 ```
 
 `npm run deploy` 会先 `build`，再把 `dist` 发到 Cloudflare Pages 项目 `construction-hub`。
+
+登录账号在 D1 `users` 表，不开放注册。本地 / 远程都要执行 `migrations/0005_users.sql`，再用内部脚本写入用户名和密码哈希。
 
 Git 集成构建配置：
 

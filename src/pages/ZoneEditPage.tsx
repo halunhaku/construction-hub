@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react'
-import { createZone, getZone, updateZone } from '../api'
+import { getZone, updateZone } from '../api'
 import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 
-export default function ZoneEditPage({ id }: { id?: string }) {
-  const editing = Boolean(id)
+export default function ZoneEditPage({ id }: { id: string }) {
+
   const [zone, setZone] = useState<ZoneParams>({ ...defaults, start: '' })
   const [error, setError] = useState('')
   const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(editing)
+  const [loading, setLoading] = useState(true)
 
-  // 编辑模式：加载布控区域并预填
   useEffect(() => {
-    if (!id) return
     let cancelled = false
     getZone(id)
       .then((item) => {
@@ -34,10 +32,9 @@ export default function ZoneEditPage({ id }: { id?: string }) {
     }
   }, [id])
 
-  // 结束桩号 = 起始桩号 + 作业区长度（自动计算，只读展示，无需手输）
   const endStake = (() => {
-    const s = parseStake(zone.start)
-    return s != null && zone.work >= 10 ? stake(s + (zone.direction === 'down' ? -zone.work : zone.work)) : ''
+    const start = parseStake(zone.start)
+    return start != null && zone.work >= 10 ? stake(start + (zone.direction === 'down' ? -zone.work : zone.work)) : ''
   })()
 
   async function submit(e: React.FormEvent) {
@@ -55,11 +52,8 @@ export default function ZoneEditPage({ id }: { id?: string }) {
     setSaving(true)
     setError('')
     try {
-      const data = { zone }
-      const result = editing && id
-        ? await updateZone(id, data).then(() => ({ id }))
-        : await createZone(data)
-      window.location.hash = `#/zones/${result.id}`
+      await updateZone(id, { zone })
+      window.location.hash = `#/zones/${id}`
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败')
       setSaving(false)
@@ -68,20 +62,20 @@ export default function ZoneEditPage({ id }: { id?: string }) {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '布控区域', editing ? '编辑布控' : '新建布控']} />
+      <AppHeader trail={['首页', '布控区域', '编辑布控']} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = editing && id ? `#/zones/${id}` : '#/zones')}>
+          <button className="btn" onClick={() => (window.location.hash = `#/zones/${id}`)}>
             ← 返回
           </button>
-          <h1>{editing ? '编辑布控区域' : '新建布控区域'}</h1>
+          <h1>编辑布控区域</h1>
           <span className="topbar-spacer" />
         </header>
 
         {loading ? <div className="table-empty">正在加载布控区域…</div> : null}
 
         {!loading && (
-          <form className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
+          <form className="form" onSubmit={(e) => void submit(e)} onChange={() => setError('')} noValidate>
             <h2 className="form-section-title">作业区布置</h2>
             <div className="card form-card">
               <div className="form-row">
@@ -92,16 +86,17 @@ export default function ZoneEditPage({ id }: { id?: string }) {
               </div>
               <ZoneForm
                 value={zone}
-                onChange={(z) => z && setZone(z)}
+                onChange={(next) => next && setZone(next)}
                 allowDisable={false}
                 linked={false}
                 showErrors={showZoneErrors}
+                allowExport
               />
             </div>
 
             {error ? <div className="notice error">{error}</div> : null}
             <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
-              {saving ? '保存中…' : editing ? '保存修改' : '保存布控区域'}
+              {saving ? '保存中…' : '保存修改'}
             </button>
           </form>
         )}

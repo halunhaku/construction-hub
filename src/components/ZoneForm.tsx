@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { ZoneDiagrams } from '../zone/RoadDiagram'
 import { buildZones, defaults, mirrorZones, stake, zoneExtent } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 import type { ZoneParams } from '../types'
+import ZoneExportButtons from './ZoneExportButtons'
 
 /**
  * 作业区布置参数表单 + 实时预览（新建记录页与布置编辑页共用）。
@@ -14,6 +15,7 @@ export default function ZoneForm({
   allowDisable = true,
   linked = false,
   showErrors = false,
+  allowExport = false,
 }: {
   value: ZoneParams | null
   onChange: (zone: ZoneParams | null) => void
@@ -22,7 +24,10 @@ export default function ZoneForm({
   linked?: boolean
   /** 提交校验失败后显示字段级错误 */
   showErrors?: boolean
+  /** 独立布控新建页：不入库也能导出 A4 图纸 */
+  allowExport?: boolean
 }) {
+  const previewRef = useRef<HTMLDivElement>(null)
   const enabled = allowDisable ? value !== null : true
   const form = value ?? defaults
   const errors = showErrors ? validateZone(value) : {}
@@ -243,7 +248,7 @@ export default function ZoneForm({
             </div>
           </details>
 
-          <div className="zone-preview-inline">
+          <div className="zone-preview-inline" ref={previewRef}>
             <p className="zone-meta">
               {form.start} · {form.direction === 'up' ? '上行' : '下行'} ·{' '}
               {form.workSide === 'median' ? '中央分隔带' : '路侧'}
@@ -263,6 +268,15 @@ export default function ZoneForm({
               speed={form.speed}
               vertical
             />
+            {allowExport ? (
+              <>
+                <p className="pin-hint">导出图纸不会写入系统。登录后才能把布置保存到列表。</p>
+                <ZoneExportButtons
+                  params={form}
+                  getSvgs={() => [...(previewRef.current?.querySelectorAll<SVGSVGElement>('.roadSvg') ?? [])]}
+                />
+              </>
+            ) : null}
           </div>
         </>
       )}

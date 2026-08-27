@@ -44,7 +44,7 @@ export default function ZonesPage() {
             <p>独立设置与管理作业区布置图，不依赖施工记录，可随时打印或发群确认。</p>
           </div>
           <div className="heading-actions">
-            <button className="btn btn-primary" onClick={() => (window.location.hash = '#/zones/new')}>
+            <button className="btn btn-primary" onClick={() => (window.location.hash = '#/layout')}>
               <Plus />
               新建布控
             </button>
@@ -52,10 +52,10 @@ export default function ZonesPage() {
         </section>
 
         <QrPanel
-          hash="#/zones/new"
-          title="扫码新建布控"
-          subtitle="手机扫码后直接进入填参页面，保存即可到详情页导出布置图。长按二维码可保存，也可下载后发群或打印。"
-          filename="布控入口二维码.png"
+          hash="#/layout"
+          title="扫码出布置图"
+          subtitle="发给现场或群里。未登录可填参、预览、导出；登录后才能保存到本系统。"
+          filename="布置图入口二维码.png"
         />
 
         {error ? <div className="notice error">{error}</div> : null}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, CircleAlert, Images, MapPin, Plus, Search, Signpost, TrafficCone } from 'lucide-react'
+import { CalendarDays, CircleAlert, Images, List, MapPin, Plus, Search, Signpost, TrafficCone } from 'lucide-react'
 import { listRecords } from '../api'
 import AppHeader from '../components/AppHeader'
 import { PHASES, type RecordItem } from '../types'
@@ -145,9 +145,13 @@ export default function DashboardPage() {
             <p>选择项目后，进入施工位置清单与现场证据管理。</p>
           </div>
           <div className="heading-actions">
-            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/zones')}>
+            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/layout')}>
               <TrafficCone />
-              设置布控区域
+              作业区布置
+            </button>
+            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/zones')}>
+              <List />
+              布控列表
             </button>
             <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/signs')}>
               <Signpost />

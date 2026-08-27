@@ -14,3 +14,5 @@ database_id = "8321e506-5e5a-4d1e-afb3-01e36f5b5d6a"
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "three-photos"
+
+# 登录账号在 D1 users 表，不写进本文件。

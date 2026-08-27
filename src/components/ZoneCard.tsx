@@ -1,21 +1,28 @@
 import { useMemo, useRef, useState } from 'react'
-import { Download, FileImage, FileText, Hand, Layers3, Maximize2, MousePointer2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Hand, Layers3, Maximize2, MousePointer2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import { ZoneDiagrams } from '../zone/RoadDiagram'
 import { buildZones, mirrorZones, stake, zoneExtent } from '../zone/utils'
-import { buildExportPages, downloadImages, downloadPdf, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
+import { signSchedule, signScheduleDouble } from '../zone/export'
 import type { ZoneParams } from '../types'
+import ZoneExportButtons from './ZoneExportButtons'
 
-export default function ZoneCard({ params, onEdit, onClear, workspace = false, clearLabel = '清除' }: {
+export default function ZoneCard({
+  params,
+  onEdit,
+  onClear,
+  workspace = false,
+  clearLabel = '清除',
+  hideClear = false,
+}: {
   params: ZoneParams
   onEdit: () => void
-  onClear: () => void
+  onClear?: () => void
   workspace?: boolean
   /** 清除按钮文案：记录语境默认「清除」，独立布控区域传「删除布控」 */
   clearLabel?: string
+  hideClear?: boolean
 }) {
   const diagramRef = useRef<HTMLDivElement>(null)
-  const [exporting, setExporting] = useState(false)
-  const [flash, setFlash] = useState('')
   const [zoom, setZoom] = useState(1)
   const zones = useMemo(() => buildZones(params), [params])
   const total = useMemo(() => zones.reduce((s, z) => s + z.length, 0), [zones])
@@ -40,46 +47,6 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
     [params.doubleSide, params.direction, params.speed, zones],
   )
 
-  function exportDrawing(type: 'png' | 'jpg' | 'pdf') {
-    const svgs = [...(diagramRef.current?.querySelectorAll<SVGSVGElement>('.roadSvg') ?? [])]
-    if (svgs.length === 0) {
-      setFlash('导出失败：布置图未就绪，请稍后重试')
-      return
-    }
-    setExporting(true)
-    // 规程图式为纵向。单侧：布置图 + 一览表；双侧：上行图 + 下行图 + 一览表
-    const { diagramPages, tablePage } = buildExportPages({
-      diagrams: svgs.map((svg) => ({
-        ...snapshotDiagram(svg),
-        caption: !params.doubleSide ? '' : svg.getAttribute('data-direction') === 'down' ? '下行' : '上行',
-      })),
-      params,
-      zones,
-      signRows,
-      total,
-      doubleSide: params.doubleSide,
-      orientation: 'portrait',
-    })
-    const pw = 2480
-    const ph = 3508
-    const finish = () => setExporting(false)
-    const stem = `A4纵向-作业区`
-    const pages = [...diagramPages, tablePage]
-    if (type === 'pdf') {
-      downloadPdf(pages, pw, ph, 210, 297, `${stem}布置-${params.start}.pdf`, finish)
-    } else {
-      const ext = type === 'jpg' ? 'jpg' : 'png'
-      const files = [
-        ...diagramPages.map((page, index) => {
-          const caption = params.doubleSide ? (index === 0 ? '布置图-上行' : '布置图-下行') : '布置图'
-          return { page, filename: `${stem}${caption}-${params.start}.${ext}` }
-        }),
-        { page: tablePage, filename: `${stem}布置表-${params.start}.${ext}` },
-      ]
-      downloadImages(files, pw, ph, type === 'jpg' ? 'image/jpeg' : 'image/png', finish)
-    }
-  }
-
   const meta = `起点 ${params.start} · ${params.direction === 'up' ? '上行' : '下行'} · ${
     params.workSide === 'median' ? '中央分隔带' : '路侧'
   }${params.doubleSide ? ' · 双侧占路' : ''} · ${params.doubleSide ? '单侧长度' : '总长'} ${total.toLocaleString()}m${
@@ -97,9 +64,11 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
           <button className="btn" onClick={onEdit}>
             <Pencil /> 编辑
           </button>
-          <button className="btn btn-danger" onClick={onClear}>
-            <Trash2 /> {clearLabel}
-          </button>
+          {!hideClear && onClear ? (
+            <button className="btn btn-danger" onClick={onClear}>
+              <Trash2 /> {clearLabel}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -188,18 +157,10 @@ export default function ZoneCard({ params, onEdit, onClear, workspace = false, c
         </div> : null}
       </div>
 
-      <div className="zone-export">
-        <button className="btn btn-primary" onClick={() => exportDrawing('png')} disabled={exporting}>
-          <Download /> {exporting ? '生成中…' : '导出图纸'}
-        </button>
-        <button className="btn" onClick={() => exportDrawing('jpg')} disabled={exporting}>
-          <FileImage /> JPG
-        </button>
-        <button className="btn" onClick={() => exportDrawing('pdf')} disabled={exporting}>
-          <FileText /> PDF
-        </button>
-      </div>
-      {flash && <div className="notice error">{flash}</div>}
+      <ZoneExportButtons
+        params={params}
+        getSvgs={() => [...(diagramRef.current?.querySelectorAll<SVGSVGElement>('.roadSvg') ?? [])]}
+      />
     </div>
   )
 }

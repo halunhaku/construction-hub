@@ -2,16 +2,32 @@ import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
 import type { Params as ZoneParams } from '../../src/zone/types'
 import { validateZone } from '../../src/zone/validation.ts'
+import { verifyPassword } from './password.ts'
+import {
+  clearSessionCookie,
+  findSessionUser,
+  readSessionId,
+  sessionCookie,
+  type AuthUser,
+} from './session.ts'
 
 type Bindings = {
   DB: D1Database
   BUCKET: R2Bucket
 }
 
+type Variables = {
+  user: AuthUser
+}
+
 const PHASES = ['before', 'during', 'after'] as const
 type Phase = (typeof PHASES)[number]
 
-const app = new Hono<{ Bindings: Bindings }>().basePath('/api')
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>().basePath('/api')
+
+function isHttps(url: string): boolean {
+  return new URL(url).protocol === 'https:'
+}
 
 interface RecordRow {
   id: string
@@ -147,6 +163,47 @@ const RECORD_SELECT = `
 `
 
 app.get('/health', (c) => c.json({ ok: true }))
+
+app.post('/auth/login', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const username = String(body?.username ?? '').trim()
+  const password = String(body?.password ?? '')
+  if (!username || !password) return c.json({ error: '请输入用户名和密码' }, 400)
+  const user = await c.env.DB.prepare('SELECT id, username, password_hash FROM users WHERE username = ?')
+    .bind(username)
+    .first<{ id: string; username: string; password_hash: string }>()
+  if (!user || !(await verifyPassword(password, user.password_hash))) {
+    return c.json({ error: '用户名或密码不对' }, 401)
+  }
+  const sessionId = crypto.randomUUID()
+  const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19)
+  await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)').bind(sessionId, user.id, expires).run()
+  c.header('Set-Cookie', sessionCookie(sessionId, isHttps(c.req.url)))
+  return c.json({ user: { id: user.id, username: user.username } })
+})
+
+app.post('/auth/logout', async (c) => {
+  const sessionId = readSessionId(c.req.header('Cookie'))
+  if (sessionId) {
+    await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run()
+  }
+  c.header('Set-Cookie', clearSessionCookie(isHttps(c.req.url)))
+  return c.json({ ok: true })
+})
+
+app.get('/auth/me', async (c) => {
+  const user = await findSessionUser(c.env.DB, readSessionId(c.req.header('Cookie')))
+  return c.json({ user })
+})
+
+app.use('*', async (c, next) => {
+  const path = new URL(c.req.url).pathname
+  if (path === '/api/health' || path.startsWith('/api/auth/')) return next()
+  const user = await findSessionUser(c.env.DB, readSessionId(c.req.header('Cookie')))
+  if (!user) return c.json({ error: '请先登录' }, 401)
+  c.set('user', user)
+  await next()
+})
 
 // 项目列表（供顶部项目切换器）
 app.get('/projects', async (c) => {

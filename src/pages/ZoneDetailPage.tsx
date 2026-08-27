@@ -10,6 +10,7 @@ import { formatTime } from '../util'
 export default function ZoneDetailPage({ id }: { id: string }) {
   const [item, setItem] = useState<ZoneItem | null>(null)
   const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -34,15 +35,17 @@ export default function ZoneDetailPage({ id }: { id: string }) {
     return start != null && length >= 10 ? stake(start + (item?.direction === 'down' ? -length : length)) : ''
   }, [item])
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!item) return
     const ok = window.confirm(`确定删除布控区域（${item.stake}）吗？此操作不可恢复。`)
     if (!ok) return
-    deleteZone(item.id)
-      .then(() => {
-        window.location.hash = '#/zones'
-      })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : '删除失败'))
+    setActionError('')
+    try {
+      await deleteZone(item.id)
+      window.location.hash = '#/zones'
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : '删除失败')
+    }
   }
 
   if (error) return <div className="app-frame"><AppHeader trail={['首页', '布控区域', '详情']} /><div className="page notice error">{error}</div></div>
@@ -79,7 +82,7 @@ export default function ZoneDetailPage({ id }: { id: string }) {
           size="compact"
         />
 
-        {error ? <div className="notice error">{error}</div> : null}
+        {actionError ? <div className="notice error">{actionError}</div> : null}
         <ZoneCard
           params={params}
           onEdit={() => (window.location.hash = `#/zones/${item.id}/edit`)}
