@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CalendarClock, ChevronRight, Plus, Search, TrafficCone } from 'lucide-react'
 import { listZones } from '../api'
 import AppHeader from '../components/AppHeader'
+import QrPanel from '../components/QrPanel'
 import { directionLabel, type ZoneItem } from '../types'
 import { parseStake, stake } from '../zone/utils'
 import { formatTime } from '../util'
@@ -49,6 +50,13 @@ export default function ZonesPage() {
             </button>
           </div>
         </section>
+
+        <QrPanel
+          hash="#/zones/new"
+          title="扫码新建布控"
+          subtitle="手机扫码后直接进入填参页面，保存即可到详情页导出布置图。长按二维码可保存，也可下载后发群或打印。"
+          filename="布控入口二维码.png"
+        />
 
         {error ? <div className="notice error">{error}</div> : null}
 

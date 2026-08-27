@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deleteZone, getZone } from '../api'
 import AppHeader from '../components/AppHeader'
+import QrPanel from '../components/QrPanel'
 import ZoneCard from '../components/ZoneCard'
 import type { ZoneItem } from '../types'
 import { parseStake, parseZoneParams, stake } from '../zone/utils'
@@ -68,6 +69,15 @@ export default function ZoneDetailPage({ id }: { id: string }) {
             <p>作业区 {item.length.toLocaleString()}m · 更新于 {formatTime(item.updated_at)}</p>
           </div>
         </div>
+
+        <QrPanel
+          hash={`#/zones/${item.id}`}
+          title="扫码查看这张布置图"
+          subtitle="发给现场或群里，扫开即可看图并导出。"
+          caption={endStake ? `${item.stake} — ${endStake}` : item.stake}
+          filename={`布控二维码-${item.stake}.png`}
+          size="compact"
+        />
 
         {error ? <div className="notice error">{error}</div> : null}
         <ZoneCard
