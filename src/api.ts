@@ -21,6 +21,38 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export interface AuthUser {
   id: string
   username: string
+  is_admin: boolean
+}
+
+export interface AccountItem {
+  id: string
+  username: string
+  is_admin: boolean
+  created_at: string
+}
+
+export function listUsers(): Promise<AccountItem[]> {
+  return request<AccountItem[]>('/users')
+}
+
+export function createUser(username: string, password: string): Promise<{ id: string; username: string; is_admin: boolean }> {
+  return request('/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export function updateUserPassword(id: string, password: string): Promise<{ ok: boolean }> {
+  return request(`/users/${encodeURIComponent(id)}/password`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+}
+
+export function deleteUser(id: string): Promise<{ ok: boolean }> {
+  return request(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 export function fetchMe(): Promise<{ user: AuthUser | null }> {

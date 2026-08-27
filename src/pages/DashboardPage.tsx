@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, CircleAlert, Images, List, MapPin, Plus, Search, Signpost, TrafficCone } from 'lucide-react'
 import { listRecords } from '../api'
+import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
 import { PHASES, type RecordItem } from '../types'
 
@@ -89,6 +90,7 @@ function summarize(name: string, records: RecordItem[]): ProjectSummary {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth()
   const [records, setRecords] = useState<RecordItem[]>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ProjectStatus | ''>('')
@@ -157,6 +159,11 @@ export default function DashboardPage() {
               <Signpost />
               标志牌 SVG
             </button>
+            {user?.is_admin ? (
+              <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/users')}>
+                账号
+              </button>
+            ) : null}
             <button className="btn btn-primary" onClick={() => (window.location.hash = '#/new')}>
               <Plus />
               新建项目

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, LogIn, LogOut, ShieldCheck } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, LogIn, LogOut, ShieldCheck, Users } from 'lucide-react'
 import { listProjects, logout } from '../api'
 import { useAuth } from '../auth'
 
@@ -109,6 +109,11 @@ export default function AppHeader({
               </div>
             )}
           </div>
+        ) : null}
+        {user?.is_admin ? (
+          <button className="icon-btn" aria-label="账号" title="账号" onClick={() => (window.location.hash = '#/users')}>
+            <Users />
+          </button>
         ) : null}
         {user ? (
           <button className="icon-btn" aria-label="日历" onClick={() => (window.location.hash = '#/calendar')}>

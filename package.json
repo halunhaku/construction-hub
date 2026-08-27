@@ -14,7 +14,8 @@
     "db:init": "wrangler d1 execute three-photos-db --file=schema.sql",
     "db:migrate:excel": "wrangler d1 execute three-photos-db --local --file=migrations/0002_excel_import_fields.sql",
     "db:migrate:excel:remote": "wrangler d1 execute three-photos-db --remote --file=migrations/0002_excel_import_fields.sql",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name construction-hub"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name construction-hub",
+    "user:add": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/add-user.ts"
   },
   "dependencies": {
     "hono": "^4.13.0",

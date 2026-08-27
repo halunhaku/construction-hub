@@ -1,6 +1,7 @@
 export interface AuthUser {
   id: string
   username: string
+  is_admin: boolean
 }
 
 const COOKIE = 'ch_sid'
@@ -33,12 +34,13 @@ export async function findSessionUser(db: D1Database, sessionId: string): Promis
   if (!sessionId) return null
   const row = await db
     .prepare(
-      `SELECT u.id, u.username
+      `SELECT u.id, u.username, u.is_admin
        FROM sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.id = ? AND s.expires_at > datetime('now')`,
     )
     .bind(sessionId)
-    .first<AuthUser>()
-  return row ?? null
+    .first<{ id: string; username: string; is_admin: number }>()
+  if (!row) return null
+  return { id: row.id, username: row.username, is_admin: row.is_admin === 1 }
 }

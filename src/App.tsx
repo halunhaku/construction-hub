@@ -15,6 +15,7 @@ import SignsPage from './pages/SignsPage'
 import ZoneDetailPage from './pages/ZoneDetailPage'
 import ZoneEditPage from './pages/ZoneEditPage'
 import ZoneEditorPage from './pages/ZoneEditorPage'
+import UsersPage from './pages/UsersPage'
 import ZonesPage from './pages/ZonesPage'
 
 function useHashRoute() {
@@ -52,6 +53,7 @@ function Router({ user }: { user: AuthUser | null }) {
   if (path === 'zones' && id && sub === 'edit') return <ZoneEditPage key={id} id={decodeURIComponent(id)} />
   if (path === 'zones' && id) return <ZoneDetailPage id={decodeURIComponent(id)} />
   if (path === 'zones') return <ZonesPage />
+  if (path === 'users') return user.is_admin ? <UsersPage /> : <DashboardPage />
   return <DashboardPage />
 }
 

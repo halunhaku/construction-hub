@@ -139,12 +139,21 @@ npm run db:migrate:excel:remote
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0003_indexes.sql
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0004_zones.sql
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0005_users.sql
+npx wrangler d1 execute three-photos-db --remote --file=migrations/0006_user_admin.sql
 npm run deploy
 ```
 
 `npm run deploy` 会先 `build`，再把 `dist` 发到 Cloudflare Pages 项目 `construction-hub`。
 
-登录账号在 D1 `users` 表，不开放注册。本地 / 远程都要执行 `migrations/0005_users.sql`，再用内部脚本写入用户名和密码哈希。
+登录账号在 D1 `users` 表，不开放注册。管理员登录后打开顶部「账号」页（`#/users`）即可添加、改密、删除。新账号默认不是管理员。
+
+命令行备用：
+
+```bash
+npm run user:add -- --username 张三 --password '口令' --remote
+npm run user:add -- --username 张三 --password '口令' --local
+npm run user:add -- --username 张三 --password '新口令' --remote --update
+```
 
 Git 集成构建配置：
 

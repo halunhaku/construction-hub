@@ -501,6 +501,8 @@ th { color: var(--muted); background: var(--surface-soft); }
 .layout-lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .layout-actions, .guest-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 24px; }
 .login-form { max-width: 420px; }
+.user-row { cursor: default; }
+.user-row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 /* ── 布控区域详情：左侧纵向布置图 + 右侧表格 ── */
 .zone-card-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }

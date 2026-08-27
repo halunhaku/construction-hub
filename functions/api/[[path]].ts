@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
 import type { Params as ZoneParams } from '../../src/zone/types'
 import { validateZone } from '../../src/zone/validation.ts'
-import { verifyPassword } from './password.ts'
+import { hashPassword, verifyPassword } from './password.ts'
 import {
   clearSessionCookie,
   findSessionUser,
@@ -169,9 +169,9 @@ app.post('/auth/login', async (c) => {
   const username = String(body?.username ?? '').trim()
   const password = String(body?.password ?? '')
   if (!username || !password) return c.json({ error: '请输入用户名和密码' }, 400)
-  const user = await c.env.DB.prepare('SELECT id, username, password_hash FROM users WHERE username = ?')
+  const user = await c.env.DB.prepare('SELECT id, username, password_hash, is_admin FROM users WHERE username = ?')
     .bind(username)
-    .first<{ id: string; username: string; password_hash: string }>()
+    .first<{ id: string; username: string; password_hash: string; is_admin: number }>()
   if (!user || !(await verifyPassword(password, user.password_hash))) {
     return c.json({ error: '用户名或密码不对' }, 401)
   }
@@ -179,7 +179,7 @@ app.post('/auth/login', async (c) => {
   const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19)
   await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)').bind(sessionId, user.id, expires).run()
   c.header('Set-Cookie', sessionCookie(sessionId, isHttps(c.req.url)))
-  return c.json({ user: { id: user.id, username: user.username } })
+  return c.json({ user: { id: user.id, username: user.username, is_admin: user.is_admin === 1 } })
 })
 
 app.post('/auth/logout', async (c) => {
@@ -203,6 +203,61 @@ app.use('*', async (c, next) => {
   if (!user) return c.json({ error: '请先登录' }, 401)
   c.set('user', user)
   await next()
+})
+
+function requireAdmin(c: { get: (key: 'user') => AuthUser }) {
+  const user = c.get('user')
+  if (!user.is_admin) return false
+  return true
+}
+
+app.get('/users', async (c) => {
+  if (!requireAdmin(c)) return c.json({ error: '需要管理员权限' }, 403)
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, username, is_admin, created_at FROM users ORDER BY created_at`,
+  ).all<{ id: string; username: string; is_admin: number; created_at: string }>()
+  return c.json(results.map((row) => ({ ...row, is_admin: row.is_admin === 1 })))
+})
+
+app.post('/users', async (c) => {
+  if (!requireAdmin(c)) return c.json({ error: '需要管理员权限' }, 403)
+  const body = await c.req.json().catch(() => null)
+  const username = String(body?.username ?? '').trim()
+  const password = String(body?.password ?? '')
+  if (!username) return c.json({ error: '请填写用户名' }, 400)
+  if (password.length < 6) return c.json({ error: '密码至少 6 位' }, 400)
+  const exists = await c.env.DB.prepare('SELECT id FROM users WHERE username = ?').bind(username).first()
+  if (exists) return c.json({ error: '用户名已存在' }, 400)
+  const id = crypto.randomUUID()
+  await c.env.DB.prepare('INSERT INTO users (id, username, password_hash, is_admin) VALUES (?, ?, ?, 0)')
+    .bind(id, username, await hashPassword(password))
+    .run()
+  return c.json({ id, username, is_admin: false }, 201)
+})
+
+app.put('/users/:id/password', async (c) => {
+  if (!requireAdmin(c)) return c.json({ error: '需要管理员权限' }, 403)
+  const id = c.req.param('id')
+  const body = await c.req.json().catch(() => null)
+  const password = String(body?.password ?? '')
+  if (password.length < 6) return c.json({ error: '密码至少 6 位' }, 400)
+  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(id).first()
+  if (!existing) return c.json({ error: '用户不存在' }, 404)
+  await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .bind(await hashPassword(password), id)
+    .run()
+  return c.json({ ok: true })
+})
+
+app.delete('/users/:id', async (c) => {
+  if (!requireAdmin(c)) return c.json({ error: '需要管理员权限' }, 403)
+  const id = c.req.param('id')
+  if (id === c.get('user').id) return c.json({ error: '不能删除当前登录账号' }, 400)
+  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(id).first()
+  if (!existing) return c.json({ error: '用户不存在' }, 404)
+  await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id).run()
+  await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id).run()
+  return c.json({ ok: true })
 })
 
 // 项目列表（供顶部项目切换器）
