@@ -1,4 +1,4 @@
-import type { ImportRecordForm, Phase, RecordForm, RecordItem, ZoneFormData, ZoneItem, ZoneParams } from './types'
+import type { ImportRecordForm, Phase, RecordForm, RecordItem, RecordSummary, ZoneFormData, ZoneItem, ZoneParams } from './types'
 
 const BASE = '/api'
 
@@ -71,6 +71,14 @@ export function logout(): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>('/auth/logout', { method: 'POST' })
 }
 
+export function changeOwnPassword(current: string, password: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/auth/password', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current, password }),
+  })
+}
+
 export interface ListQuery {
   project?: string
   highway?: string
@@ -83,13 +91,13 @@ export interface ListQuery {
   photo?: string // all | complete | incomplete（前端过滤）
 }
 
-export function listRecords(q: ListQuery = {}): Promise<RecordItem[]> {
+export function listRecords(q: ListQuery = {}): Promise<RecordSummary[]> {
   const params = new URLSearchParams()
   for (const [k, v] of Object.entries(q)) {
     if (v) params.set(k, v)
   }
   const qs = params.toString()
-  return request<RecordItem[]>(`/records${qs ? '?' + qs : ''}`)
+  return request<RecordSummary[]>(`/records${qs ? '?' + qs : ''}`)
 }
 
 export function getRecord(id: string): Promise<RecordItem> {
@@ -106,6 +114,12 @@ export interface Options {
 export interface ProjectSummary {
   name: string
   count: number
+  complete_count?: number
+  highway?: string
+  section?: string
+  date_from?: string
+  date_to?: string
+  updated_at?: string
 }
 
 /** 项目列表（顶部项目切换器用） */
@@ -128,6 +142,14 @@ const OPTIONS_CACHE_KEY = 'opts-cache-v1'
 const OPTIONS_TTL = 24 * 60 * 60 * 1000
 
 /** 选项数据缓存 24h：命中后立即返回（不阻塞页面），并在后台静默刷新 */
+export function invalidateOptions() {
+  try {
+    localStorage.removeItem(OPTIONS_CACHE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function getOptions(): Promise<Options> {
   try {
     const raw = localStorage.getItem(OPTIONS_CACHE_KEY)
@@ -154,34 +176,42 @@ export async function getOptions(): Promise<Options> {
   return fresh
 }
 
-export function createRecord(data: RecordForm): Promise<{ id: string }> {
-  return request<{ id: string }>('/records', {
+export async function createRecord(data: RecordForm): Promise<{ id: string }> {
+  const result = await request<{ id: string }>('/records', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
+  invalidateOptions()
+  return result
 }
 
-export function updateRecord(id: string, data: RecordForm): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, {
+export async function updateRecord(id: string, data: RecordForm): Promise<{ ok: boolean }> {
+  const result = await request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
+  invalidateOptions()
+  return result
 }
 
-export function importRecords(
+export async function importRecords(
   records: ImportRecordForm[],
 ): Promise<{ count: number; ids: string[] }> {
-  return request<{ count: number; ids: string[] }>('/records/import', {
+  const result = await request<{ count: number; ids: string[] }>('/records/import', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ records }),
   })
+  invalidateOptions()
+  return result
 }
 
-export function deleteRecord(id: string): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, { method: 'DELETE' })
+export async function deleteRecord(id: string): Promise<{ ok: boolean }> {
+  const result = await request<{ ok: boolean }>(`/records/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  invalidateOptions()
+  return result
 }
 
 // ── 独立布控区域（zones）──
@@ -233,10 +263,12 @@ export async function uploadPhoto(
   recordId: string,
   phase: Phase,
   file: Blob,
+  takenAt?: string,
 ): Promise<{ photoId: string }> {
   const form = new FormData()
   form.append('phase', phase)
   form.append('file', file, 'photo.jpg')
+  if (takenAt) form.append('taken_at', takenAt)
   return request<{ photoId: string }>(`/records/${encodeURIComponent(recordId)}/photos`, {
     method: 'POST',
     body: form,

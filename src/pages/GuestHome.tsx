@@ -1,5 +1,6 @@
 import { LogIn, Signpost, TrafficCone } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
+import { goToLogin } from '../guestZone'
 
 export default function GuestHome() {
   return (
@@ -22,7 +23,7 @@ export default function GuestHome() {
             <Signpost />
             标志牌 SVG
           </button>
-          <button className="btn" onClick={() => (window.location.hash = '#/login')}>
+          <button className="btn" onClick={() => goToLogin()}>
             <LogIn />
             登录
           </button>

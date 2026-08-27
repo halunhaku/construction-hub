@@ -30,7 +30,13 @@ export interface Photo {
   taken_at: string
 }
 
-export interface RecordItem {
+export interface PhotoCounts {
+  before: number
+  during: number
+  after: number
+}
+
+export interface RecordSummary {
   id: string
   project_name: string
   highway: string
@@ -41,9 +47,36 @@ export interface RecordItem {
   direction: string // '' | 'up' | 'down'
   content: string
   work_date: string
-  zone_params: string | null // JSON.stringify(ZoneParams)，null = 未设置
+  zone_params: string | null
   created_at: string
+  updated_at: string
+  photo_counts: PhotoCounts
+}
+
+export interface RecordItem extends Omit<RecordSummary, 'photo_counts'> {
   photos: Record<Phase, Photo[]>
+}
+
+export function photoCountsOf(record: RecordItem): PhotoCounts {
+  return {
+    before: record.photos.before.length,
+    during: record.photos.during.length,
+    after: record.photos.after.length,
+  }
+}
+
+export function isPhotoComplete(counts: PhotoCounts): boolean {
+  return counts.before > 0 && counts.during > 0 && counts.after > 0
+}
+
+export function photoTotal(counts: PhotoCounts): number {
+  return counts.before + counts.during + counts.after
+}
+
+export function recordStateFromCounts(counts: PhotoCounts): { label: string; className: string } {
+  if (counts.before > 0 && counts.during > 0 && counts.after === 0) return { label: '施工中', className: 'progress' }
+  if (!isPhotoComplete(counts)) return { label: '资料待补充', className: 'incomplete' }
+  return { label: '已完整', className: 'complete' }
 }
 
 export interface RecordForm {

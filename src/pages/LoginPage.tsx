@@ -1,7 +1,17 @@
 import { useState } from 'react'
-import { login } from '../api'
+import { createZone, login } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
+import {
+  clearGuestZone,
+  consumeLoginIntent,
+  loadGuestZone,
+  isPublicHash,
+  peekLoginIntent,
+  safeReturnHash,
+  setGuestSaveError,
+} from '../guestZone'
+import { validateZone } from '../zone/validation'
 
 export default function LoginPage() {
   const { setUser } = useAuth()
@@ -9,6 +19,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const intended = safeReturnHash(peekLoginIntent()?.returnHash)
+  const backHash = isPublicHash(intended) ? intended : '#/'
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -17,7 +29,25 @@ export default function LoginPage() {
     try {
       const result = await login(username.trim(), password)
       setUser(result.user)
-      window.location.hash = '#/'
+      const intent = consumeLoginIntent()
+      if (intent?.save) {
+        const zone = loadGuestZone()
+        if (!zone || Object.keys(validateZone(zone)).length > 0) {
+          window.location.hash = '#/layout'
+          return
+        }
+        try {
+          const created = await createZone({ zone })
+          clearGuestZone()
+          window.location.hash = `#/zones/${created.id}`
+          return
+        } catch (reason) {
+          setGuestSaveError(reason instanceof Error ? reason.message : '保存失败')
+          window.location.hash = '#/layout'
+          return
+        }
+      }
+      window.location.hash = safeReturnHash(intent?.returnHash)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '登录失败')
       setBusy(false)
@@ -29,8 +59,8 @@ export default function LoginPage() {
       <AppHeader trail={['登录']} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = '#/layout')}>
-            ← 布置图
+          <button className="btn" onClick={() => (window.location.hash = backHash)}>
+            ← 返回
           </button>
           <h1>登录</h1>
           <span className="topbar-spacer" />

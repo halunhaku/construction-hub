@@ -2,17 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, CircleAlert, CircleCheck } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { fetchDaily, listRecords } from '../api'
-import { directionLabel, PHASES, type RecordItem } from '../types'
+import { directionLabel, isPhotoComplete, type RecordSummary } from '../types'
 import { today } from '../util'
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
-}
-
-function isComplete(record: RecordItem): boolean {
-  return PHASES.every((phase) => record.photos[phase.key].length > 0)
 }
 
 function monthCells(year: number, month: number): (number | null)[] {
@@ -32,7 +28,7 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(Number(t.slice(5, 7)) - 1)
   const [selected, setSelected] = useState(t)
   const [daily, setDaily] = useState<Record<string, { total: number; complete: number }>>({})
-  const [records, setRecords] = useState<RecordItem[]>([])
+  const [records, setRecords] = useState<RecordSummary[]>([])
   const [loadingDay, setLoadingDay] = useState(false)
 
   const monthKey = `${year}-${pad(month + 1)}`
@@ -168,7 +164,7 @@ export default function CalendarPage() {
                     <span>{directionLabel(r.direction)}</span>
                     <span className="calendar-day-item-content">{r.content || r.project_name}</span>
                   </div>
-                  {isComplete(r) ? (
+                  {isPhotoComplete(r.photo_counts) ? (
                     <span className="status-chip complete"><CircleCheck />资料完整</span>
                   ) : (
                     <span className="status-chip incomplete"><CircleAlert />资料待补充</span>

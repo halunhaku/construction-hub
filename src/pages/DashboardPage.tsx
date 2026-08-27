@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, CircleAlert, Images, List, MapPin, Plus, Search, Signpost, TrafficCone } from 'lucide-react'
-import { listRecords } from '../api'
+import { listProjects, type ProjectSummary as ProjectRow } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
-import { PHASES, type RecordItem } from '../types'
 
 type ProjectStatus = '进行中' | '资料待补充' | '已完成'
 
@@ -19,16 +18,11 @@ interface ProjectSummary {
   status: ProjectStatus
 }
 
-function isComplete(record: RecordItem): boolean {
-  return PHASES.every((phase) => record.photos[phase.key].length > 0)
-}
-
 function dateLabel(value: string): string {
   if (!value) return '暂无日期'
   return value.slice(0, 10).replaceAll('-', '.')
 }
 
-// ── 最近访问：记录用户最近进入的项目（localStorage，最多 3 个）──
 const RECENT_KEY = 'recent-projects-v1'
 const RECENT_MAX = 3
 
@@ -53,19 +47,12 @@ function rememberProject(name: string): string[] {
   return next
 }
 
-function summarize(name: string, records: RecordItem[]): ProjectSummary {
-  const sortedDates = records.map((record) => record.work_date).filter(Boolean).sort()
-  const completeCount = records.filter(isComplete).length
-  const missingCount = records.length - completeCount
-  const completeness = records.length ? Math.round((completeCount / records.length) * 100) : 0
-  const highways = [...new Set(records.map((record) => record.highway).filter(Boolean))]
-  const sections = [...new Set(records.map((record) => record.section).filter(Boolean))]
-  const latest = records
-    .map((record) => record.created_at || record.work_date)
-    .filter(Boolean)
-    .sort()
-    .at(-1) ?? ''
-  const latestWorkDate = sortedDates.at(-1) ?? ''
+function toSummary(row: ProjectRow): ProjectSummary {
+  const recordCount = Number(row.count) || 0
+  const completeCount = Number(row.complete_count) || 0
+  const missingCount = Math.max(0, recordCount - completeCount)
+  const completeness = recordCount ? Math.round((completeCount / recordCount) * 100) : 0
+  const latestWorkDate = row.date_to || ''
   const recentThreshold = new Date()
   recentThreshold.setDate(recentThreshold.getDate() - 45)
   const status: ProjectStatus = completeness === 100
@@ -75,23 +62,23 @@ function summarize(name: string, records: RecordItem[]): ProjectSummary {
       : '资料待补充'
 
   return {
-    name,
-    location: [...highways.slice(0, 1), ...sections.slice(0, 1)].join(' · ') || '未填写道路与路段',
-    recordCount: records.length,
+    name: row.name,
+    location: [row.highway, row.section].filter(Boolean).join(' · ') || '未填写道路与路段',
+    recordCount,
     completeCount,
     completeness,
     missingCount,
-    dateRange: sortedDates.length
-      ? `${dateLabel(sortedDates[0])} — ${dateLabel(sortedDates.at(-1) ?? sortedDates[0])}`
+    dateRange: row.date_from
+      ? `${dateLabel(row.date_from)} — ${dateLabel(row.date_to || row.date_from)}`
       : '暂无施工日期',
-    updatedAt: dateLabel(latest),
+    updatedAt: dateLabel(row.updated_at || row.date_to || ''),
     status,
   }
 }
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [records, setRecords] = useState<RecordItem[]>([])
+  const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ProjectStatus | ''>('')
   const [loading, setLoading] = useState(true)
@@ -99,22 +86,11 @@ export default function DashboardPage() {
   const [recentNames, setRecentNames] = useState<string[]>(loadRecentNames)
 
   useEffect(() => {
-    listRecords()
-      .then(setRecords)
+    listProjects()
+      .then((rows) => setProjects(rows.map(toSummary)))
       .catch((reason) => setError(reason instanceof Error ? reason.message : '项目加载失败'))
       .finally(() => setLoading(false))
   }, [])
-
-  const projects = useMemo(() => {
-    const groups = new Map<string, RecordItem[]>()
-    for (const record of records) {
-      const name = record.project_name.trim() || '未命名项目'
-      groups.set(name, [...(groups.get(name) ?? []), record])
-    }
-    return [...groups.entries()]
-      .map(([name, items]) => summarize(name, items))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-  }, [records])
 
   const visible = useMemo(() => {
     const keyword = search.trim().toLowerCase()
@@ -124,7 +100,6 @@ export default function DashboardPage() {
     })
   }, [projects, search, status])
 
-  // 最近访问：从访问记录映射回当前项目列表（已删除的项目自动过滤）
   const recent = useMemo(() => {
     return recentNames
       .map((name) => projects.find((project) => project.name === name))

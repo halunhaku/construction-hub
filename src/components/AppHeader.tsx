@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, LogIn, LogOut, ShieldCheck, Users } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, KeyRound, LogIn, LogOut, ShieldCheck, User, Users } from 'lucide-react'
 import { listProjects, logout } from '../api'
 import { useAuth } from '../auth'
+import { goToLogin } from '../guestZone'
 
 export default function AppHeader({
   trail,
@@ -16,8 +17,10 @@ export default function AppHeader({
   const { user, setUser } = useAuth()
   const activeName = projectKey ?? project
   const [open, setOpen] = useState(false)
+  const [userOpen, setUserOpen] = useState(false)
   const [projects, setProjects] = useState<{ name: string; count: number }[]>([])
   const wrapRef = useRef<HTMLDivElement>(null)
+  const userWrapRef = useRef<HTMLDivElement>(null)
 
   async function handleLogout() {
     try {
@@ -47,6 +50,7 @@ export default function AppHeader({
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+      if (userWrapRef.current && !userWrapRef.current.contains(e.target as Node)) setUserOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
@@ -116,20 +120,55 @@ export default function AppHeader({
           </button>
         ) : null}
         {user ? (
-          <button className="icon-btn" aria-label="日历" onClick={() => (window.location.hash = '#/calendar')}>
+          <button className="icon-btn" aria-label="日历" title="日历" onClick={() => (window.location.hash = '#/calendar')}>
             <CalendarDays />
           </button>
         ) : null}
-        <button className="icon-btn" aria-label="帮助" onClick={() => (window.location.hash = '#/help')}>
+        <button className="icon-btn" aria-label="帮助" title="帮助" onClick={() => (window.location.hash = '#/help')}>
           <CircleHelp />
         </button>
         {user ? (
-          <button className="user-button" title={`${user.username} · 退出`} aria-label="退出登录" onClick={() => void handleLogout()}>
-            <LogOut />
-            <span>{user.username}</span>
-          </button>
+          <div className="user-menu-wrap" ref={userWrapRef}>
+            <button
+              className="user-button"
+              title={user.username}
+              aria-label={user.username}
+              aria-haspopup="menu"
+              aria-expanded={userOpen}
+              onClick={() => setUserOpen((value) => !value)}
+            >
+              <User />
+              <span>{user.username}</span>
+            </button>
+            {userOpen ? (
+              <div className="user-menu" role="menu">
+                <button
+                  role="menuitem"
+                  className="project-switcher-item"
+                  onClick={() => {
+                    setUserOpen(false)
+                    window.location.hash = '#/account'
+                  }}
+                >
+                  <KeyRound aria-hidden="true" />
+                  修改密码
+                </button>
+                <button
+                  role="menuitem"
+                  className="project-switcher-item"
+                  onClick={() => {
+                    setUserOpen(false)
+                    void handleLogout()
+                  }}
+                >
+                  <LogOut aria-hidden="true" />
+                  退出
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : (
-          <button className="user-button" aria-label="登录" onClick={() => (window.location.hash = '#/login')}>
+          <button className="user-button" aria-label="登录" onClick={() => goToLogin()}>
             <LogIn />
             <span>登录</span>
           </button>

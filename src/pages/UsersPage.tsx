@@ -13,6 +13,10 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [resetId, setResetId] = useState<string | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   function refresh() {
     return listUsers()
@@ -40,14 +44,33 @@ export default function UsersPage() {
     }
   }
 
-  async function resetPassword(item: AccountItem) {
-    const next = window.prompt(`为「${item.username}」设置新密码（至少 6 位）`) ?? ''
-    if (!next.trim()) return
+  function startReset(item: AccountItem) {
+    setResetId(item.id)
+    setResetPassword('')
+    setResetConfirm('')
+    setError('')
+  }
+
+  async function submitReset(item: AccountItem) {
+    if (resetPassword.length < 6) {
+      setError('新密码至少 6 位')
+      return
+    }
+    if (resetPassword !== resetConfirm) {
+      setError('两次输入的新密码不一致')
+      return
+    }
+    setResetting(true)
     setError('')
     try {
-      await updateUserPassword(item.id, next)
+      await updateUserPassword(item.id, resetPassword)
+      setResetId(null)
+      setResetPassword('')
+      setResetConfirm('')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '改密失败')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -108,17 +131,48 @@ export default function UsersPage() {
                     {item.created_at ? ` · ${formatTime(item.created_at)}` : ''}
                   </span>
                 </span>
-                <span className="user-row-actions">
-                  <button type="button" className="btn" onClick={() => void resetPassword(item)}>
-                    改密
-                  </button>
-                  {item.id === user?.id ? null : (
-                    <button type="button" className="btn btn-danger" onClick={() => void remove(item)}>
-                      <Trash2 />
-                      删除
+                {resetId === item.id ? (
+                  <form
+                    className="user-reset-form"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void submitReset(item)
+                    }}
+                  >
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="新密码"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                    />
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="再输入一次"
+                      value={resetConfirm}
+                      onChange={(e) => setResetConfirm(e.target.value)}
+                    />
+                    <button type="submit" className="btn btn-primary" disabled={resetting}>
+                      {resetting ? '保存中…' : '保存'}
                     </button>
-                  )}
-                </span>
+                    <button type="button" className="btn" onClick={() => setResetId(null)}>
+                      取消
+                    </button>
+                  </form>
+                ) : (
+                  <span className="user-row-actions">
+                    <button type="button" className="btn" onClick={() => startReset(item)}>
+                      改密
+                    </button>
+                    {item.id === user?.id ? null : (
+                      <button type="button" className="btn btn-danger" onClick={() => void remove(item)}>
+                        <Trash2 />
+                        删除
+                      </button>
+                    )}
+                  </span>
+                )}
               </div>
             ))}
           </section>

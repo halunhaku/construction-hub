@@ -12,6 +12,16 @@ export function today(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/** 校验施工日期：必须是真实存在的日历日（拒绝 2026-13-45）。 */
+export function isValidWorkDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const year = Number(value.slice(0, 4))
+  const month = Number(value.slice(5, 7))
+  const day = Number(value.slice(8, 10))
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+}
+
 /**
  * 生成前端临时 id。
  * 优先用 crypto.randomUUID；部分旧版浏览器 / 微信 X5 内核 WebView 未实现该 API，

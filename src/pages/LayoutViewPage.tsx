@@ -3,16 +3,15 @@ import { createZone } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
 import ZoneCard from '../components/ZoneCard'
-import { loadGuestZone } from '../guestZone'
-import { parseStake, parseZoneParams, stake } from '../zone/utils'
+import { clearGuestZone, goToLogin, loadGuestZone } from '../guestZone'
+import { parseStake, stake } from '../zone/utils'
 
 export default function LayoutViewPage() {
   const { user } = useAuth()
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const params = useMemo(() => {
-    const stored = loadGuestZone()
-    return stored ? parseZoneParams(JSON.stringify(stored)) : null
+    return loadGuestZone()
   }, [])
 
   const endStake = useMemo(() => {
@@ -26,13 +25,14 @@ export default function LayoutViewPage() {
   async function save() {
     if (!params) return
     if (!user) {
-      window.location.hash = '#/login'
+      goToLogin({ save: true })
       return
     }
     setSaving(true)
     setError('')
     try {
       const result = await createZone({ zone: params })
+      clearGuestZone()
       window.location.hash = `#/zones/${result.id}`
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '保存失败')

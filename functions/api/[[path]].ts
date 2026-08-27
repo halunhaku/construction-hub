@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
 import type { Params as ZoneParams } from '../../src/zone/types'
+import { isValidWorkDate } from '../../src/util.ts'
 import { validateZone } from '../../src/zone/validation.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 import {
@@ -42,6 +43,7 @@ interface RecordRow {
   work_date: string
   zone_params: string | null
   created_at: string
+  updated_at: string
   photo_id: string | null
   phase: Phase | null
   file_key: string | null
@@ -149,6 +151,7 @@ function toRecord(rows: RecordRow[]) {
     work_date: first.work_date,
     zone_params: first.zone_params,
     created_at: first.created_at,
+    updated_at: first.updated_at,
     photos,
   }
 }
@@ -156,7 +159,7 @@ function toRecord(rows: RecordRow[]) {
 const RECORD_SELECT = `
   SELECT r.id, r.project_name, r.highway, r.section, r.work_location,
          r.stake, r.end_stake, r.direction,
-         r.content, r.work_date, r.zone_params, r.created_at,
+         r.content, r.work_date, r.zone_params, r.created_at, r.updated_at,
          p.id AS photo_id, p.phase, p.file_key, p.taken_at
   FROM records r
   LEFT JOIN photos p ON p.record_id = r.id
@@ -164,17 +167,69 @@ const RECORD_SELECT = `
 
 app.get('/health', (c) => c.json({ ok: true }))
 
+function clientIp(c: { req: { header: (name: string) => string | undefined } }): string {
+  return c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() || 'unknown'
+}
+
+async function sweepExpiredSessions(db: D1Database) {
+  try {
+    await db.prepare("DELETE FROM sessions WHERE expires_at <= datetime('now')").run()
+  } catch {
+    /* 表不存在时忽略 */
+  }
+}
+
+async function tooManyLogins(db: D1Database, username: string, ip: string): Promise<boolean> {
+  try {
+    await db.prepare("DELETE FROM login_attempts WHERE attempted_at < datetime('now', '-1 day')").run()
+    const row = await db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM login_attempts
+         WHERE attempted_at > datetime('now', '-15 minutes')
+           AND (username = ?1 OR ip = ?2)`,
+      )
+      .bind(username, ip)
+      .first<{ n: number }>()
+    return (Number(row?.n) || 0) >= 8
+  } catch {
+    return false
+  }
+}
+
+async function recordLoginFail(db: D1Database, username: string, ip: string) {
+  try {
+    await db.prepare('INSERT INTO login_attempts (username, ip) VALUES (?, ?)').bind(username, ip).run()
+  } catch {
+    /* 表不存在时忽略 */
+  }
+}
+
+async function clearLoginFails(db: D1Database, username: string, ip: string) {
+  try {
+    await db.prepare('DELETE FROM login_attempts WHERE username = ? OR ip = ?').bind(username, ip).run()
+  } catch {
+    /* 表不存在时忽略 */
+  }
+}
+
 app.post('/auth/login', async (c) => {
   const body = await c.req.json().catch(() => null)
   const username = String(body?.username ?? '').trim()
   const password = String(body?.password ?? '')
   if (!username || !password) return c.json({ error: '请输入用户名和密码' }, 400)
+  const ip = clientIp(c)
+  if (await tooManyLogins(c.env.DB, username, ip)) {
+    return c.json({ error: '尝试次数过多，请 15 分钟后再试' }, 429)
+  }
   const user = await c.env.DB.prepare('SELECT id, username, password_hash, is_admin FROM users WHERE username = ?')
     .bind(username)
     .first<{ id: string; username: string; password_hash: string; is_admin: number }>()
   if (!user || !(await verifyPassword(password, user.password_hash))) {
+    await recordLoginFail(c.env.DB, username, ip)
     return c.json({ error: '用户名或密码不对' }, 401)
   }
+  await clearLoginFails(c.env.DB, username, ip)
+  await sweepExpiredSessions(c.env.DB)
   const sessionId = crypto.randomUUID()
   const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19)
   await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)').bind(sessionId, user.id, expires).run()
@@ -187,6 +242,7 @@ app.post('/auth/logout', async (c) => {
   if (sessionId) {
     await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run()
   }
+  await sweepExpiredSessions(c.env.DB)
   c.header('Set-Cookie', clearSessionCookie(isHttps(c.req.url)))
   return c.json({ ok: true })
 })
@@ -198,11 +254,40 @@ app.get('/auth/me', async (c) => {
 
 app.use('*', async (c, next) => {
   const path = new URL(c.req.url).pathname
-  if (path === '/api/health' || path.startsWith('/api/auth/')) return next()
+  if (
+    path === '/api/health' ||
+    path === '/api/auth/login' ||
+    path === '/api/auth/logout' ||
+    path === '/api/auth/me'
+  ) {
+    return next()
+  }
   const user = await findSessionUser(c.env.DB, readSessionId(c.req.header('Cookie')))
   if (!user) return c.json({ error: '请先登录' }, 401)
   c.set('user', user)
   await next()
+})
+
+app.put('/auth/password', async (c) => {
+  const body = await c.req.json().catch(() => null)
+  const current = String(body?.current ?? '')
+  const next = String(body?.password ?? '')
+  if (!current || next.length < 6) return c.json({ error: '请填写当前密码，新密码至少 6 位' }, 400)
+  const userId = c.get('user').id
+  const row = await c.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?')
+    .bind(userId)
+    .first<{ password_hash: string }>()
+  if (!row || !(await verifyPassword(current, row.password_hash))) {
+    return c.json({ error: '当前密码不对' }, 400)
+  }
+  await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .bind(await hashPassword(next), userId)
+    .run()
+  const sessionId = readSessionId(c.req.header('Cookie'))
+  await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND id != ?')
+    .bind(userId, sessionId)
+    .run()
+  return c.json({ ok: true })
 })
 
 function requireAdmin(c: { get: (key: 'user') => AuthUser }) {
@@ -246,6 +331,7 @@ app.put('/users/:id/password', async (c) => {
   await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
     .bind(await hashPassword(password), id)
     .run()
+  await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id).run()
   return c.json({ ok: true })
 })
 
@@ -262,23 +348,42 @@ app.delete('/users/:id', async (c) => {
 
 // 项目列表（供顶部项目切换器）
 app.get('/projects', async (c) => {
-  c.header('CDN-Cache-Control', 'max-age=120')
-  c.header('Cache-Control', 'public, s-maxage=120')
+  c.header('Cache-Control', 'private, no-store')
+  c.header('CDN-Cache-Control', 'no-store')
   const { results } = await c.env.DB.prepare(
-    `SELECT project_name AS name, COUNT(*) AS count
-     FROM records
-     WHERE project_name != ''
-     GROUP BY project_name
-     ORDER BY count DESC`,
-  ).all<{ name: string; count: number }>()
+    `SELECT r.project_name AS name,
+            COUNT(*) AS count,
+            SUM(CASE WHEN IFNULL(ph.cnt, 0) >= 3 THEN 1 ELSE 0 END) AS complete_count,
+            MIN(r.highway) AS highway,
+            MIN(r.section) AS section,
+            MIN(r.work_date) AS date_from,
+            MAX(r.work_date) AS date_to,
+            MAX(r.updated_at) AS updated_at
+     FROM records r
+     LEFT JOIN (
+       SELECT record_id, COUNT(DISTINCT phase) AS cnt
+       FROM photos GROUP BY record_id
+     ) ph ON ph.record_id = r.id
+     WHERE r.project_name != ''
+     GROUP BY r.project_name
+     ORDER BY updated_at DESC`,
+  ).all<{
+    name: string
+    count: number
+    complete_count: number
+    highway: string
+    section: string
+    date_from: string
+    date_to: string
+    updated_at: string
+  }>()
   return c.json(results)
 })
 
 // 已有项目名称 / 高速 / 路段 / 施工内容选项（供表单下拉选择）
 app.get('/options', async (c) => {
-  // 数据变化不频繁，允许 Cloudflare 边缘缓存 5 分钟，减少重复查询
-  c.header('CDN-Cache-Control', 'max-age=300')
-  c.header('Cache-Control', 'public, s-maxage=300')
+  c.header('Cache-Control', 'private, no-store')
+  c.header('CDN-Cache-Control', 'no-store')
   const projects = await c.env.DB.prepare(
     "SELECT DISTINCT project_name FROM records WHERE project_name != '' ORDER BY project_name",
   ).all<{ project_name: string }>()
@@ -318,8 +423,8 @@ app.post('/records', async (c) => {
   if (!project_name || !highway || !section || !stake || !work_date) {
     return c.json({ error: '项目名称、高速公路、路段、桩号、施工日期为必填项' }, 400)
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(work_date)) {
-    return c.json({ error: '施工日期格式应为 YYYY-MM-DD' }, 400)
+  if (!isValidWorkDate(work_date)) {
+    return c.json({ error: '施工日期格式应为 YYYY-MM-DD，且必须是真实日期' }, 400)
   }
   if (direction !== '' && direction !== 'up' && direction !== 'down') {
     return c.json({ error: '方向只能是 up（上行）/ down（下行）' }, 400)
@@ -356,8 +461,8 @@ app.put('/records/:id', async (c) => {
   if (!project_name || !highway || !section || !stake || !work_date) {
     return c.json({ error: '项目名称、高速公路、路段、桩号、施工日期为必填项' }, 400)
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(work_date)) {
-    return c.json({ error: '施工日期格式应为 YYYY-MM-DD' }, 400)
+  if (!isValidWorkDate(work_date)) {
+    return c.json({ error: '施工日期格式应为 YYYY-MM-DD，且必须是真实日期' }, 400)
   }
   if (direction !== '' && direction !== 'up' && direction !== 'down') {
     return c.json({ error: '方向只能是 up（上行）/ down（下行）' }, 400)
@@ -365,7 +470,7 @@ app.put('/records/:id', async (c) => {
   await c.env.DB.prepare(
     `UPDATE records
      SET project_name = ?, highway = ?, section = ?, work_location = ?, stake = ?, end_stake = ?,
-         direction = ?, content = ?, work_date = ?, zone_params = ?
+         direction = ?, content = ?, work_date = ?, zone_params = ?, updated_at = datetime('now')
      WHERE id = ?`,
   )
     .bind(project_name, highway, section, work_location, stake, end_stake, direction, content, work_date, zone_params, id)
@@ -397,8 +502,8 @@ app.post('/records/import', async (c) => {
     if (!projectName || !highway || !section || !stake || !workDate) {
       return c.json({ error: `Excel 第 ${sourceRow} 行缺少必填字段` }, 400)
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
-      return c.json({ error: `Excel 第 ${sourceRow} 行施工日期应为 YYYY-MM-DD` }, 400)
+    if (!isValidWorkDate(workDate)) {
+      return c.json({ error: `Excel 第 ${sourceRow} 行施工日期应为真实的 YYYY-MM-DD` }, 400)
     }
     if (direction !== '' && direction !== 'up' && direction !== 'down') {
       return c.json({ error: `Excel 第 ${sourceRow} 行方向应为上行或下行` }, 400)
@@ -471,7 +576,14 @@ app.get('/records', async (c) => {
   const from = c.req.query('from') ?? ''
   const to = c.req.query('to') ?? ''
   const { results } = await c.env.DB.prepare(
-    `${RECORD_SELECT}
+    `SELECT r.id, r.project_name, r.highway, r.section, r.work_location,
+            r.stake, r.end_stake, r.direction, r.content, r.work_date,
+            r.zone_params, r.created_at, r.updated_at,
+            SUM(CASE WHEN p.phase = 'before' THEN 1 ELSE 0 END) AS before_count,
+            SUM(CASE WHEN p.phase = 'during' THEN 1 ELSE 0 END) AS during_count,
+            SUM(CASE WHEN p.phase = 'after' THEN 1 ELSE 0 END) AS after_count
+     FROM records r
+     LEFT JOIN photos p ON p.record_id = r.id
      WHERE (?1 = '' OR instr(r.project_name, ?1) > 0)
        AND (?2 = '' OR instr(r.highway, ?2) > 0)
        AND (?3 = '' OR instr(r.section, ?3) > 0)
@@ -480,19 +592,51 @@ app.get('/records', async (c) => {
        AND (?6 = '' OR instr(r.content, ?6) > 0)
        AND (?7 = '' OR r.work_date >= ?7)
        AND (?8 = '' OR r.work_date <= ?8)
+     GROUP BY r.id
      ORDER BY r.work_date DESC, r.created_at DESC`,
   )
     .bind(project, highway, section, stake, direction, content, from, to)
-    .all<RecordRow>()
+    .all<{
+      id: string
+      project_name: string
+      highway: string
+      section: string
+      work_location: string
+      stake: string
+      end_stake: string
+      direction: string
+      content: string
+      work_date: string
+      zone_params: string | null
+      created_at: string
+      updated_at: string
+      before_count: number
+      during_count: number
+      after_count: number
+    }>()
 
-  const map = new Map<string, RecordRow[]>()
-  for (const row of results) {
-    const arr = map.get(row.id) ?? []
-    arr.push(row)
-    map.set(row.id, arr)
-  }
-  const records = [...map.values()].map(toRecord).filter(Boolean)
-  return c.json(records)
+  return c.json(
+    results.map((row) => ({
+      id: row.id,
+      project_name: row.project_name,
+      highway: row.highway,
+      section: row.section,
+      work_location: row.work_location,
+      stake: row.stake,
+      end_stake: row.end_stake,
+      direction: row.direction,
+      content: row.content,
+      work_date: row.work_date,
+      zone_params: row.zone_params,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      photo_counts: {
+        before: Number(row.before_count) || 0,
+        during: Number(row.during_count) || 0,
+        after: Number(row.after_count) || 0,
+      },
+    })),
+  )
 })
 
 // 单条详情
@@ -537,22 +681,37 @@ app.post('/records/:id/photos', async (c) => {
   const data = await file.arrayBuffer()
   await c.env.BUCKET.put(key, data, { httpMetadata: { contentType: 'image/jpeg' } })
 
+  const takenAtRaw = String(form.get('taken_at') ?? '').trim()
+  const takenAt = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(takenAtRaw) ? takenAtRaw : null
+
   const photoId = crypto.randomUUID()
-  await c.env.DB.prepare('INSERT INTO photos (id, record_id, phase, file_key) VALUES (?, ?, ?, ?)')
-    .bind(photoId, id, phase, key)
-    .run()
+  if (takenAt) {
+    await c.env.DB.prepare(
+      'INSERT INTO photos (id, record_id, phase, file_key, taken_at) VALUES (?, ?, ?, ?, ?)',
+    )
+      .bind(photoId, id, phase, key, takenAt)
+      .run()
+  } else {
+    await c.env.DB.prepare('INSERT INTO photos (id, record_id, phase, file_key) VALUES (?, ?, ?, ?)')
+      .bind(photoId, id, phase, key)
+      .run()
+  }
+  await c.env.DB.prepare("UPDATE records SET updated_at = datetime('now') WHERE id = ?").bind(id).run()
   return c.json({ ok: true, photoId }, 201)
 })
 
 // 删除单张照片
 app.delete('/photos/:photoId', async (c) => {
   const photoId = c.req.param('photoId')
-  const photo = await c.env.DB.prepare('SELECT file_key FROM photos WHERE id = ?')
+  const photo = await c.env.DB.prepare('SELECT file_key, record_id FROM photos WHERE id = ?')
     .bind(photoId)
-    .first<{ file_key: string }>()
+    .first<{ file_key: string; record_id: string }>()
   if (!photo) return c.json({ error: '照片不存在' }, 404)
   await c.env.BUCKET.delete(photo.file_key)
   await c.env.DB.prepare('DELETE FROM photos WHERE id = ?').bind(photoId).run()
+  await c.env.DB.prepare("UPDATE records SET updated_at = datetime('now') WHERE id = ?")
+    .bind(photo.record_id)
+    .run()
   return c.json({ ok: true })
 })
 

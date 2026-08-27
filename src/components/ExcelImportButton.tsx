@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Download, FileSpreadsheet, LoaderCircle } from 'lucide-react'
 import { importRecords } from '../api'
 import type { ImportRecordForm } from '../types'
+import { isValidWorkDate } from '../util'
 
 type ImportSummary = {
   filename: string
@@ -74,22 +75,36 @@ export default function ExcelImportButton({
         const date = XLSX.SSF.parse_date_code(serial)
         return date ? `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}` : ''
       }
-      const records: ImportRecordForm[] = rawRows.map((row, index) => ({
-        project_name: String(pick(row, HEADER_ALIASES.project_name!)).trim(),
-        highway: String(pick(row, HEADER_ALIASES.highway!)).trim(),
-        section: String(pick(row, HEADER_ALIASES.section!)).trim(),
-        direction: normalizeDirection(pick(row, HEADER_ALIASES.direction!)),
-        work_location: String(pick(row, HEADER_ALIASES.work_location!)).trim(),
-        stake: String(pick(row, HEADER_ALIASES.stake!)).trim(),
-        end_stake: String(pick(row, HEADER_ALIASES.end_stake!)).trim(),
-        content: String(pick(row, HEADER_ALIASES.content!)).trim(),
-        work_date: normalizeDate(pick(row, HEADER_ALIASES.work_date!), parseSerial),
-        zone_params: null,
-        source_row: index + 2,
-      }))
+      const records: ImportRecordForm[] = rawRows
+        .map((row, index) => ({
+          project_name: String(pick(row, HEADER_ALIASES.project_name!)).trim(),
+          highway: String(pick(row, HEADER_ALIASES.highway!)).trim(),
+          section: String(pick(row, HEADER_ALIASES.section!)).trim(),
+          direction: normalizeDirection(pick(row, HEADER_ALIASES.direction!)),
+          work_location: String(pick(row, HEADER_ALIASES.work_location!)).trim(),
+          stake: String(pick(row, HEADER_ALIASES.stake!)).trim(),
+          end_stake: String(pick(row, HEADER_ALIASES.end_stake!)).trim(),
+          content: String(pick(row, HEADER_ALIASES.content!)).trim(),
+          work_date: normalizeDate(pick(row, HEADER_ALIASES.work_date!), parseSerial),
+          zone_params: null,
+          source_row: index + 2,
+        }))
+        .filter((row) =>
+          row.project_name ||
+          row.highway ||
+          row.section ||
+          row.stake ||
+          row.work_date ||
+          row.content ||
+          row.work_location ||
+          row.end_stake ||
+          row.direction,
+        )
       if (records.length === 0) throw new Error('Excel 中没有数据行')
       const required = records.find((row) => !row.project_name || !row.highway || !row.section || !row.stake || !row.work_date)
       if (required) throw new Error(`Excel 第 ${required.source_row} 行缺少项目、道路、路段、起始桩号或施工日期`)
+      const badDate = records.find((row) => !isValidWorkDate(row.work_date))
+      if (badDate) throw new Error(`Excel 第 ${badDate.source_row} 行施工日期不是真实日期（应为 YYYY-MM-DD）`)
       const result = await importRecords(records)
       onImported?.({ filename: file.name, count: result.count, ids: result.ids })
     } catch (reason) {

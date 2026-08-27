@@ -5,9 +5,13 @@
 export async function compressImage(file: File, maxSize = 1600, quality = 0.8): Promise<Blob> {
   let source: ImageBitmap | HTMLImageElement
   try {
-    source = await createImageBitmap(file)
+    source = await createImageBitmap(file, { imageOrientation: 'from-image' })
   } catch {
-    source = await loadViaImg(file)
+    try {
+      source = await createImageBitmap(file)
+    } catch {
+      source = await loadViaImg(file)
+    }
   }
 
   const scale = Math.min(1, maxSize / Math.max(source.width, source.height))
@@ -32,6 +36,121 @@ export async function compressImage(file: File, maxSize = 1600, quality = 0.8): 
     )
   })
   return blob
+}
+
+function utcSql(date: Date): string {
+  return date.toISOString().replace('T', ' ').slice(0, 19)
+}
+
+function exifLocalToUtc(exif: string): string | undefined {
+  const match = exif.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/)
+  if (!match) return undefined
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    Number(match[6]),
+  )
+  if (Number.isNaN(date.getTime())) return undefined
+  return utcSql(date)
+}
+
+function readU16(view: DataView, offset: number, little: boolean): number {
+  return little ? view.getUint16(offset, true) : view.getUint16(offset, false)
+}
+
+function readU32(view: DataView, offset: number, little: boolean): number {
+  return little ? view.getUint32(offset, true) : view.getUint32(offset, false)
+}
+
+function readExifAscii(view: DataView, offset: number, count: number): string {
+  const chars: string[] = []
+  for (let i = 0; i < count; i++) {
+    const code = view.getUint8(offset + i)
+    if (code === 0) break
+    chars.push(String.fromCharCode(code))
+  }
+  return chars.join('')
+}
+
+function readIfdDate(view: DataView, tiffStart: number, ifdOffset: number, little: boolean, tags: number[]): string | null {
+  if (ifdOffset <= 0 || tiffStart + ifdOffset + 2 > view.byteLength) return null
+  const count = readU16(view, tiffStart + ifdOffset, little)
+  let exifOffset = 0
+  const found: Record<number, string> = {}
+  for (let i = 0; i < count; i++) {
+    const entry = tiffStart + ifdOffset + 2 + i * 12
+    if (entry + 12 > view.byteLength) break
+    const tag = readU16(view, entry, little)
+    const type = readU16(view, entry + 2, little)
+    const size = readU32(view, entry + 4, little)
+    const value = readU32(view, entry + 8, little)
+    if (tag === 0x8769 && type === 4) exifOffset = value
+    if (tags.includes(tag) && type === 2 && size >= 10) {
+      const dataOffset = size <= 4 ? entry + 8 : tiffStart + value
+      if (dataOffset + size <= view.byteLength) found[tag] = readExifAscii(view, dataOffset, size)
+    }
+  }
+  for (const tag of tags) {
+    if (found[tag]) return found[tag]!
+  }
+  if (exifOffset) return readIfdDate(view, tiffStart, exifOffset, little, tags)
+  return null
+}
+
+function readJpegExifDate(buffer: ArrayBuffer): string | null {
+  const bytes = new Uint8Array(buffer)
+  if (bytes.length < 12 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
+  let offset = 2
+  while (offset + 4 < bytes.length) {
+    if (bytes[offset] !== 0xff) break
+    const marker = bytes[offset + 1]!
+    const size = (bytes[offset + 2]! << 8) | bytes[offset + 3]!
+    if (marker === 0xe1 && size >= 8) {
+      const start = offset + 4
+      if (
+        bytes[start] === 0x45 &&
+        bytes[start + 1] === 0x78 &&
+        bytes[start + 2] === 0x69 &&
+        bytes[start + 3] === 0x66 &&
+        bytes[start + 4] === 0x00 &&
+        bytes[start + 5] === 0x00
+      ) {
+        const tiffStart = start + 6
+        if (tiffStart + 8 > bytes.length) return null
+        const view = new DataView(buffer)
+        const endian = view.getUint16(tiffStart, false)
+        const little = endian === 0x4949
+        if (!little && endian !== 0x4d4d) return null
+        const ifd0 = readU32(view, tiffStart + 4, little)
+        return readIfdDate(view, tiffStart, ifd0, little, [0x9003, 0x9004, 0x0132])
+      }
+    }
+    if (marker === 0xda) break
+    offset += 2 + size
+  }
+  return null
+}
+
+/** 优先用 EXIF 拍摄时间，否则文件修改时间；存 UTC，供水印按本地时区显示。 */
+export async function photoTakenAtUtc(file: File): Promise<string | undefined> {
+  try {
+    const buffer = await file.slice(0, 256 * 1024).arrayBuffer()
+    const exif = readJpegExifDate(buffer)
+    if (exif) {
+      const utc = exifLocalToUtc(exif)
+      if (utc) return utc
+    }
+  } catch {
+    /* 读 EXIF 失败则退回文件时间 */
+  }
+  if (file.lastModified) {
+    const date = new Date(file.lastModified)
+    if (!Number.isNaN(date.getTime())) return utcSql(date)
+  }
+  return undefined
 }
 
 function loadViaImg(file: File): Promise<HTMLImageElement> {

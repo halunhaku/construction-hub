@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { CalendarDays, Download, Edit3, ImagePlus, MapPin, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { CalendarDays, Download, Edit3, ImagePlus, MapPin, Pencil, Trash2 } from 'lucide-react'
 import {
   deletePhoto,
   deleteRecord,
@@ -14,19 +14,25 @@ import AppHeader from '../components/AppHeader'
 import ExcelImportButton from '../components/ExcelImportButton'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import ZoneCard from '../components/ZoneCard'
-import { compressImage, watermarkImage } from '../image'
+import { compressImage, photoTakenAtUtc, watermarkImage } from '../image'
 import { buildExportPages, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
 import { buildZones, mirrorZones, parseZoneParams, stake, zoneExtent } from '../zone/utils'
-import { directionLabel, PHASE_COLORS, PHASE_SHORT, PHASES, type Phase, type Photo, type RecordItem } from '../types'
+import {
+  directionLabel,
+  photoCountsOf,
+  PHASE_COLORS,
+  PHASE_SHORT,
+  PHASES,
+  recordStateFromCounts,
+  type Phase,
+  type Photo,
+  type RecordItem,
+  type RecordSummary,
+} from '../types'
 import { formatTime, uid } from '../util'
 
 function recordState(record: RecordItem): { label: string; className: string } {
-  const beforeReady = record.photos.before.length > 0
-  const duringReady = record.photos.during.length > 0
-  const afterReady = record.photos.after.length > 0
-  if (beforeReady && duringReady && !afterReady) return { label: '施工中', className: 'progress' }
-  if (!beforeReady || !duringReady || !afterReady) return { label: '资料待补充', className: 'incomplete' }
-  return { label: '已完整', className: 'complete' }
+  return recordStateFromCounts(photoCountsOf(record))
 }
 
 /**
@@ -43,7 +49,7 @@ function photoNoOf(record: RecordItem, photo: Photo, seq: number): string {
 
 export default function RecordPage({ id }: { id: string }) {
   const [record, setRecord] = useState<RecordItem | null>(null)
-  const [records, setRecords] = useState<RecordItem[]>([])
+  const [records, setRecords] = useState<RecordSummary[]>([])
   const [error, setError] = useState('')
   const [pending, setPending] = useState<PendingItem[]>([])
   const [uploadingPhase, setUploadingPhase] = useState<Phase | null>(null)
@@ -118,9 +124,9 @@ export default function RecordPage({ id }: { id: string }) {
   async function load() {
     setError('')
     try {
-      const [current, all] = await Promise.all([getRecord(id), listRecords()])
+      const current = await getRecord(id)
       setRecord(current)
-      setRecords(all)
+      setRecords(await listRecords({ project: current.project_name }))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '加载失败')
     }
@@ -148,8 +154,9 @@ export default function RecordPage({ id }: { id: string }) {
     let failed = 0
     for (let index = 0; index < items.length; index++) {
       try {
-        const blob = await compressImage(items[index]!.file)
-        await uploadPhoto(record.id, phase, blob)
+        const file = items[index]!.file
+        const [blob, takenAt] = await Promise.all([compressImage(file), photoTakenAtUtc(file)])
+        await uploadPhoto(record.id, phase, blob, takenAt)
         succeeded++
       } catch {
         failed++
@@ -270,10 +277,11 @@ export default function RecordPage({ id }: { id: string }) {
   }
 
   async function remove() {
-    if (!window.confirm('确定删除这条记录和全部照片吗？')) return
+    if (!record || !window.confirm('确定删除这条记录和全部照片吗？')) return
+    const projectName = record.project_name
     try {
       await deleteRecord(id)
-      window.location.hash = '#/'
+      window.location.hash = projectName ? `#/project/${encodeURIComponent(projectName)}` : '#/'
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '删除失败')
     }
@@ -311,7 +319,7 @@ export default function RecordPage({ id }: { id: string }) {
           <ExcelImportButton compact onImported={() => void load()} />
           <div className="sidebar-records">
             {projectRecords.map((item) => {
-              const itemStatus = recordState(item)
+              const itemStatus = recordStateFromCounts(item.photo_counts)
               return (
                 <button
                   className={`sidebar-record${item.id === id ? ' active' : ''}`}
@@ -372,7 +380,6 @@ export default function RecordPage({ id }: { id: string }) {
           <section className="photo-workspace">
             <div className="section-heading">
               <div><p className="eyebrow">影像证据</p><h2>三阶段照片管理</h2></div>
-              <button className="icon-btn" aria-label="更多照片操作"><MoreHorizontal /></button>
             </div>
             <div className="phase-workspace-grid">
               {PHASES.map((phase) => (

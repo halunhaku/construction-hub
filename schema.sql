@@ -27,8 +27,53 @@ CREATE TABLE IF NOT EXISTS photos (
 
 CREATE INDEX IF NOT EXISTS idx_records_work_date ON records(work_date);
 CREATE INDEX IF NOT EXISTS idx_records_highway ON records(highway);
+CREATE INDEX IF NOT EXISTS idx_records_project_name ON records(project_name);
+CREATE INDEX IF NOT EXISTS idx_records_created_at ON records(created_at);
 CREATE INDEX IF NOT EXISTS idx_photos_record ON photos(record_id);
 
--- 已部署库的迁移（zone_params 列）：
---   npx wrangler d1 execute three-photos-db --remote --command="ALTER TABLE records ADD COLUMN zone_params TEXT"
--- Excel 导入字段迁移见 migrations/0002_excel_import_fields.sql
+CREATE TABLE IF NOT EXISTS zones (
+  id TEXT PRIMARY KEY,
+  project_name TEXT NOT NULL DEFAULT '',
+  highway TEXT NOT NULL DEFAULT '',
+  section TEXT NOT NULL DEFAULT '',
+  stake TEXT NOT NULL DEFAULT '',
+  length REAL NOT NULL DEFAULT 0,
+  direction TEXT NOT NULL DEFAULT 'up',
+  work_location TEXT NOT NULL DEFAULT 'roadside',
+  zone_params TEXT NOT NULL,
+  record_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_zones_project_name ON zones (project_name);
+CREATE INDEX IF NOT EXISTS idx_zones_updated_at ON zones (updated_at);
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  is_admin INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  username TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts (ip, attempted_at);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts (username, attempted_at);
+
+-- 已有库的增量迁移见 migrations/

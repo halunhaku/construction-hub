@@ -3,12 +3,11 @@ import { createRecord, getOptions, getRecord, updateRecord } from '../api'
 import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
-import { today } from '../util'
+import { isValidWorkDate, today } from '../util'
 import { validateZone } from '../zone/validation'
 import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
 
 const DIRECTIONS = [
-  { value: '', label: '不指定' },
   { value: 'up', label: '上行' },
   { value: 'down', label: '下行' },
 ]
@@ -22,7 +21,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
     work_location: '',
     stake: '',
     end_stake: '',
-    direction: '',
+    direction: 'up',
     content: '',
     work_date: today(),
   })
@@ -46,6 +45,11 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
     getRecord(id)
       .then((record) => {
         if (cancelled) return
+        const parsedZone = record.zone_params ? parseZoneParams(record.zone_params) : null
+        const direction =
+          record.direction === 'down' || record.direction === 'up'
+            ? record.direction
+            : parsedZone?.direction ?? 'up'
         setForm({
           project_name: record.project_name,
           highway: record.highway,
@@ -53,11 +57,11 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
           work_location: record.work_location || '',
           stake: record.stake,
           end_stake: record.end_stake || '',
-          direction: record.direction || '',
+          direction,
           content: record.content || '',
           work_date: record.work_date,
         })
-        setZone(record.zone_params ? parseZoneParams(record.zone_params) : null)
+        setZone(parsedZone ? { ...parsedZone, direction } : null)
         setLoading(false)
       })
       .catch((reason) => {
@@ -120,6 +124,10 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
     ].filter(Boolean)
     if (missingFields.length > 0) {
       setError(`请填写必填项：${missingFields.join('、')}`)
+      return
+    }
+    if (!isValidWorkDate(form.work_date)) {
+      setError('施工日期必须是真实日期')
       return
     }
     setShowZoneErrors(true)

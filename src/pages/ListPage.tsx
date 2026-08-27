@@ -3,20 +3,12 @@ import { CircleAlert, CircleCheck, Images, MapPin, Plus, Search } from 'lucide-r
 import { getOptions, listRecords, type ListQuery } from '../api'
 import AppHeader from '../components/AppHeader'
 import ExcelImportButton from '../components/ExcelImportButton'
-import { directionLabel, PHASES, type RecordItem } from '../types'
-
-function isComplete(record: RecordItem): boolean {
-  return PHASES.every((phase) => record.photos[phase.key].length > 0)
-}
-
-function photoCount(record: RecordItem): number {
-  return PHASES.reduce((total, phase) => total + record.photos[phase.key].length, 0)
-}
+import { directionLabel, isPhotoComplete, photoTotal, type RecordSummary } from '../types'
 
 export default function ListPage({ project }: { project?: string }) {
   const projectQuery = project ? { project } : {}
   const [form, setForm] = useState<ListQuery>(projectQuery)
-  const [records, setRecords] = useState<RecordItem[]>([])
+  const [records, setRecords] = useState<RecordSummary[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [lastImport, setLastImport] = useState<{ filename: string; count: number } | null>(null)
@@ -43,13 +35,13 @@ export default function ListPage({ project }: { project?: string }) {
   }, [project])
 
   const visible = useMemo(() => records.filter((record) => {
-    if (form.photo === 'complete') return isComplete(record)
-    if (form.photo === 'incomplete') return !isComplete(record)
+    if (form.photo === 'complete') return isPhotoComplete(record.photo_counts)
+    if (form.photo === 'incomplete') return !isPhotoComplete(record.photo_counts)
     return true
   }), [form.photo, records])
 
-  const completeCount = useMemo(() => visible.filter(isComplete).length, [visible])
-  const totalPhotos = useMemo(() => visible.reduce((total, record) => total + photoCount(record), 0), [visible])
+  const completeCount = useMemo(() => visible.filter((record) => isPhotoComplete(record.photo_counts)).length, [visible])
+  const totalPhotos = useMemo(() => visible.reduce((total, record) => total + photoTotal(record.photo_counts), 0), [visible])
 
   function reset() {
     const empty: ListQuery = { project: project ?? '', highway: '', section: '', stake: '', direction: '', photo: '' }
@@ -144,7 +136,7 @@ export default function ListPage({ project }: { project?: string }) {
           {loading ? <div className="table-empty">正在加载施工记录…</div> : null}
           {!loading && visible.length === 0 ? <div className="table-empty">暂无匹配记录，可直接导入 Excel 施工计划。</div> : null}
           {!loading ? visible.map((record) => {
-            const complete = isComplete(record)
+            const complete = isPhotoComplete(record.photo_counts)
             return (
               <button
                 className="registry-row"
@@ -158,7 +150,7 @@ export default function ListPage({ project }: { project?: string }) {
                 <span><strong>{record.project_name}</strong><small>{record.highway} · {record.section}{record.work_location ? ` · ${record.work_location}` : ''}</small></span>
                 <span>{record.content || '—'}</span>
                 <span className="numeric">{record.work_date}</span>
-                <span className="photo-cell"><Images aria-hidden="true" /> {photoCount(record)} 张</span>
+                <span className="photo-cell"><Images aria-hidden="true" /> {photoTotal(record.photo_counts)} 张</span>
                 <span className={`status-chip ${complete ? 'complete' : 'incomplete'}`}>
                   {complete ? <CircleCheck /> : <CircleAlert />}
                   {complete ? '已完整' : '待补充'}

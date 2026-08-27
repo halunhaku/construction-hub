@@ -76,7 +76,7 @@ migrations/          D1 增量迁移
   0004_zones.sql                 独立布控区域表
 tests/               作业区计算与接口校验
 public/              静态资源
-schema.sql           本地完整表结构（records + photos；zones 见 0004）
+schema.sql           本地完整表结构（records / photos / zones / users / sessions）
 wrangler.toml        Cloudflare 项目、D1、R2 绑定
 ```
 
@@ -91,14 +91,13 @@ npm run dev:api  # API: http://localhost:8788
 npm run dev      # Web: http://localhost:5173
 ```
 
-首次初始化本地数据库（`schema.sql` 不含独立布控表，需再跑 0003、0004）：
+首次初始化本地数据库：
 
 ```bash
 npx wrangler d1 execute three-photos-db --local --file=schema.sql
-npx wrangler d1 execute three-photos-db --local --file=migrations/0003_indexes.sql
-npx wrangler d1 execute three-photos-db --local --file=migrations/0004_zones.sql
-npx wrangler d1 execute three-photos-db --local --file=migrations/0005_users.sql
 ```
+
+已有本地库缺列或缺表时，再按 `migrations/` 里的文件顺序补跑。
 
 已有本地库若还没有 `work_location` / `end_stake` 列，再执行：
 
@@ -140,12 +139,13 @@ npx wrangler d1 execute three-photos-db --remote --file=migrations/0003_indexes.
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0004_zones.sql
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0005_users.sql
 npx wrangler d1 execute three-photos-db --remote --file=migrations/0006_user_admin.sql
+npx wrangler d1 execute three-photos-db --remote --file=migrations/0007_login_attempts.sql
 npm run deploy
 ```
 
 `npm run deploy` 会先 `build`，再把 `dist` 发到 Cloudflare Pages 项目 `construction-hub`。
 
-登录账号在 D1 `users` 表，不开放注册。管理员登录后打开顶部「账号」页（`#/users`）即可添加、改密、删除。新账号默认不是管理员。
+登录账号在 D1 `users` 表，不开放注册。管理员登录后打开顶部「账号」页（`#/users`）即可添加、改密、删除。普通账号可在顶栏用户名菜单里改自己的密码。新账号默认不是管理员。连续输错密码会暂时锁定 15 分钟。
 
 命令行备用：
 
