@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, CircleAlert, Images, List, MapPin, Plus, Search, Signpost, TrafficCone } from 'lucide-react'
+import { CalendarDays, CircleAlert, Images, MapPin, Plus, Search } from 'lucide-react'
 import { listProjects, type ProjectSummary as ProjectRow } from '../api'
-import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
 
 type ProjectStatus = '进行中' | '资料待补充' | '已完成'
@@ -77,7 +76,6 @@ function toSummary(row: ProjectRow): ProjectSummary {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ProjectStatus | ''>('')
@@ -106,14 +104,13 @@ export default function DashboardPage() {
       .filter((project): project is ProjectSummary => project != null)
   }, [recentNames, projects])
 
-  function openProject(name: string) {
+  function remember(name: string) {
     setRecentNames(rememberProject(name))
-    window.location.hash = `#/project/${encodeURIComponent(name)}`
   }
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页']} />
+      <AppHeader />
       <main className="dashboard-page">
         <section className="dashboard-heading">
           <div>
@@ -122,27 +119,10 @@ export default function DashboardPage() {
             <p>选择项目后，进入施工位置清单与现场证据管理。</p>
           </div>
           <div className="heading-actions">
-            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/layout')}>
-              <TrafficCone />
-              作业区布置
-            </button>
-            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/zones')}>
-              <List />
-              布控列表
-            </button>
-            <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/signs')}>
-              <Signpost />
-              标志牌 SVG
-            </button>
-            {user?.is_admin ? (
-              <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/users')}>
-                账号
-              </button>
-            ) : null}
-            <button className="btn btn-primary" onClick={() => (window.location.hash = '#/new')}>
+            <a className="btn btn-primary" href="#/new">
               <Plus />
-              新建项目
-            </button>
+              新建记录
+            </a>
           </div>
         </section>
 
@@ -164,9 +144,9 @@ export default function DashboardPage() {
             <strong>最近访问</strong>
             <div>
               {recent.map((project) => (
-                <button key={project.name} onClick={() => openProject(project.name)}>
+                <a key={project.name} href={`#/project/${encodeURIComponent(project.name)}`} onClick={() => remember(project.name)}>
                   {project.name}
-                </button>
+                </a>
               ))}
             </div>
           </section>
@@ -184,10 +164,11 @@ export default function DashboardPage() {
         {!loading && visible.length ? (
           <section className="project-grid" aria-label="项目列表">
             {visible.map((project) => (
-              <button
+              <a
                 className="project-card"
                 key={project.name}
-                onClick={() => openProject(project.name)}
+                href={`#/project/${encodeURIComponent(project.name)}`}
+                onClick={() => remember(project.name)}
               >
                 <span className="project-card-head">
                   <span>
@@ -210,7 +191,7 @@ export default function DashboardPage() {
                   <small>更新于 {project.updatedAt}</small>
                   {project.missingCount ? <em><CircleAlert />{project.missingCount} 条待补充</em> : <em className="complete">资料完整</em>}
                 </span>
-              </button>
+              </a>
             ))}
           </section>
         ) : null}

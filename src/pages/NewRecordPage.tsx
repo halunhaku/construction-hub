@@ -1,11 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRecord, getOptions, getRecord, updateRecord } from '../api'
 import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
-import { isValidWorkDate, today } from '../util'
+import { useUnsavedGuard } from '../useUnsavedGuard'
+import { focusFirstIssue, isValidWorkDate, today, ZONE_ERROR_ORDER } from '../util'
 import { validateZone } from '../zone/validation'
 import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
+
+type RecordForm = {
+  project_name: string
+  highway: string
+  section: string
+  work_location: string
+  stake: string
+  end_stake: string
+  direction: string
+  content: string
+  work_date: string
+}
+
+function recordSnapshot(form: RecordForm, zone: ZoneParams | null) {
+  const { end_stake: _end, ...rest } = form
+  return JSON.stringify({ form: rest, zone })
+}
 
 const DIRECTIONS = [
   { value: 'up', label: '上行' },
@@ -14,7 +32,7 @@ const DIRECTIONS = [
 
 export default function NewRecordPage({ project, id }: { project?: string; id?: string }) {
   const editing = Boolean(id)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RecordForm>({
     project_name: project ?? '',
     highway: '',
     section: '',
@@ -37,6 +55,16 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
   const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(editing)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [baseline, setBaseline] = useState<string | null>(null)
+  const snapshot = recordSnapshot(form, zone)
+  const dirty = baseline !== null && snapshot !== baseline
+  const allowLeave = useUnsavedGuard(dirty)
+
+  useEffect(() => {
+    if (loading || baseline !== null) return
+    setBaseline(snapshot)
+  }, [baseline, loading, snapshot])
 
   // 编辑模式：加载记录并预填表单与布置参数
   useEffect(() => {
@@ -115,19 +143,21 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    const missingFields = [
-      !form.project_name.trim() ? '项目名称' : '',
-      !form.highway.trim() ? '高速公路' : '',
-      !form.section.trim() ? '路段' : '',
-      !form.stake.trim() ? '起始桩号' : '',
-      !form.work_date ? '施工日期' : '',
-    ].filter(Boolean)
-    if (missingFields.length > 0) {
-      setError(`请填写必填项：${missingFields.join('、')}`)
+    const missing: { name: string; label: string }[] = [
+      !form.project_name.trim() ? { name: 'project_name', label: '项目名称' } : null,
+      !form.highway.trim() ? { name: 'highway', label: '高速公路' } : null,
+      !form.section.trim() ? { name: 'section', label: '路段' } : null,
+      !form.stake.trim() ? { name: 'stake', label: '起始桩号' } : null,
+      !form.work_date ? { name: 'work_date', label: '施工日期' } : null,
+    ].filter((item): item is { name: string; label: string } => item != null)
+    if (missing.length > 0) {
+      setError(`请填写必填项：${missing.map((item) => item.label).join('、')}`)
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, missing.map((item) => item.name)))
       return
     }
     if (!isValidWorkDate(form.work_date)) {
       setError('施工日期必须是真实日期')
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, ['work_date']))
       return
     }
     setShowZoneErrors(true)
@@ -142,6 +172,8 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         .filter(Boolean)
         .join('；')
       setError(linkedMsg || '作业区布置参数有误，请修正（红色提示处）')
+      const names = ZONE_ERROR_ORDER.filter((key) => zoneErrors[key]).map((key) => (key === 'start' ? 'stake' : key))
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, names))
       return
     }
     setSaving(true)
@@ -153,9 +185,11 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
       }
       if (editing && id) {
         await updateRecord(id, data)
+        allowLeave()
         window.location.hash = `#/record/${id}`
       } else {
         const { id: newId } = await createRecord(data)
+        allowLeave()
         window.location.hash = `#/record/${newId}`
       }
     } catch (err) {
@@ -167,7 +201,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
   if (loading) {
     return (
       <div className="app-frame">
-        <AppHeader trail={['项目', '记录管理', '编辑记录']} />
+        <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '编辑记录' }]} />
         <div className="page-loading">正在加载记录…</div>
       </div>
     )
@@ -175,23 +209,40 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['项目', '记录管理', editing ? '编辑记录' : '新建记录']} />
+      <AppHeader
+        trail={
+          editing && id
+            ? [
+                { label: '首页', href: '#/' },
+                { label: '记录详情', href: `#/record/${id}` },
+                { label: '编辑记录' },
+              ]
+            : project
+              ? [
+                  { label: '首页', href: '#/' },
+                  { label: project, href: `#/project/${encodeURIComponent(project)}` },
+                  { label: '新建记录' },
+                ]
+              : [{ label: '首页', href: '#/' }, { label: '新建记录' }]
+        }
+      />
       <div className="page">
       <header className="topbar">
-        <button className="btn" onClick={() => (window.location.hash = editing && id ? `#/record/${id}` : '#/')}>
+        <a className="btn" href={editing && id ? `#/record/${id}` : project ? `#/project/${encodeURIComponent(project)}` : '#/'}>
           ← 返回
-        </button>
+        </a>
         <h1>{editing ? '编辑施工记录' : '新建施工记录'}</h1>
         <span className="topbar-spacer" />
       </header>
 
-      <form className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
+      <form ref={formRef} className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
         <h2 className="form-section-title">基本信息</h2>
         <div className="card form-card">
         <label>
           项目名称 <b className="req">*</b>
           <input
             required
+            name="project_name"
             list="np-project-options"
             placeholder="从列表选择，或输入新项目名"
             value={form.project_name}
@@ -208,6 +259,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
           高速公路 <b className="req">*</b>
           <input
             required
+            name="highway"
             list="np-highway-options"
             placeholder="例如：S50太临高速"
             value={form.highway}
@@ -224,6 +276,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
           路段 <b className="req">*</b>
           <input
             required
+            name="section"
             list="np-section-options"
             placeholder="例如：太佳西段"
             value={form.section}
@@ -241,6 +294,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
             起始桩号 <b className="req">*</b>
             <input
               required
+              name="stake"
               placeholder="例如：K12+345"
               value={form.stake}
               onChange={(e) => handleStake(e.target.value)}
@@ -249,6 +303,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
           <label>
             作业区长度（m）
             <input
+              name="work"
               type="number"
               min={10}
               max={4000}
@@ -290,6 +345,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         <label>
           施工日期 <b className="req">*</b>
           <input
+            name="work_date"
             type="date"
             required
             value={form.work_date}

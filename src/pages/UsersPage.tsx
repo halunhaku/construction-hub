@@ -88,7 +88,7 @@ export default function UsersPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '账号']} />
+      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '账号' }]} />
       <main className="registry-page">
         <section className="registry-heading">
           <div>

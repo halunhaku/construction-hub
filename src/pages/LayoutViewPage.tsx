@@ -43,12 +43,12 @@ export default function LayoutViewPage() {
   if (!params) {
     return (
       <div className="app-frame">
-        <AppHeader trail={['布置图']} />
+        <AppHeader trail={[{ label: '布置图' }]} />
         <div className="page">
           <div className="table-empty">还没有布置图，请先填写参数。</div>
-          <button className="btn btn-primary" onClick={() => (window.location.hash = '#/layout')}>
+          <a className="btn btn-primary" href="#/layout">
             去填写
-          </button>
+          </a>
         </div>
       </div>
     )
@@ -56,12 +56,12 @@ export default function LayoutViewPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['布置图', '预览']} />
+      <AppHeader trail={[{ label: '布置图', href: '#/layout' }, { label: '预览' }]} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = '#/layout')}>
+          <a className="btn" href="#/layout">
             ← 修改参数
-          </button>
+          </a>
           <h1>布置图</h1>
           <span className="topbar-spacer" />
         </header>
@@ -83,7 +83,7 @@ export default function LayoutViewPage() {
 
         <ZoneCard
           params={params}
-          onEdit={() => (window.location.hash = '#/layout')}
+          editHref="#/layout"
           hideClear
         />
 

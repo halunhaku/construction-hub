@@ -24,12 +24,12 @@ export default function SignsPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '标志牌']} />
+      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '标志牌' }]} />
       <div className="page signs-page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = '#/')}>
+          <a className="btn" href="#/">
             ← 返回
-          </button>
+          </a>
           <h1>标志牌 SVG</h1>
           <span className="topbar-spacer" />
         </header>

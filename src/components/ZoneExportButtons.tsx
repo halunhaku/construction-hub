@@ -14,7 +14,7 @@ export default function ZoneExportButtons({
   getSvgs: () => SVGSVGElement[]
   onInvalid?: (message: string) => void
 }) {
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'png' | 'jpg' | 'pdf' | null>(null)
   const [flash, setFlash] = useState('')
 
   function exportDrawing(type: 'png' | 'jpg' | 'pdf') {
@@ -34,7 +34,7 @@ export default function ZoneExportButtons({
       return
     }
     setFlash('')
-    setExporting(true)
+    setExporting(type)
     const zones = buildZones(params)
     const total = zones.reduce((sum, zone) => sum + zone.length, 0)
     const signRows = params.doubleSide
@@ -54,7 +54,7 @@ export default function ZoneExportButtons({
     })
     const pw = 2480
     const ph = 3508
-    const finish = () => setExporting(false)
+    const finish = () => setExporting(null)
     const stem = `A4纵向-作业区`
     const pages = [...diagramPages, tablePage]
     if (type === 'pdf') {
@@ -75,14 +75,14 @@ export default function ZoneExportButtons({
   return (
     <>
       <div className="zone-export">
-        <button type="button" className="btn btn-primary" onClick={() => exportDrawing('png')} disabled={exporting}>
-          <Download /> {exporting ? '生成中…' : '导出图纸'}
+        <button type="button" className="btn btn-primary" onClick={() => exportDrawing('png')} disabled={Boolean(exporting)}>
+          <Download /> {exporting === 'png' ? '生成 PNG…' : '导出 PNG'}
         </button>
-        <button type="button" className="btn" onClick={() => exportDrawing('jpg')} disabled={exporting}>
-          <FileImage /> JPG
+        <button type="button" className="btn" onClick={() => exportDrawing('jpg')} disabled={Boolean(exporting)}>
+          <FileImage /> {exporting === 'jpg' ? '生成 JPG…' : '导出 JPG'}
         </button>
-        <button type="button" className="btn" onClick={() => exportDrawing('pdf')} disabled={exporting}>
-          <FileText /> PDF
+        <button type="button" className="btn" onClick={() => exportDrawing('pdf')} disabled={Boolean(exporting)}>
+          <FileText /> {exporting === 'pdf' ? '生成 PDF…' : '导出 PDF'}
         </button>
       </div>
       {flash ? <div className="notice error">{flash}</div> : null}

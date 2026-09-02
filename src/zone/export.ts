@@ -6,13 +6,19 @@ import { mirrorZones, speedLimits, stake, warningSignOffsets, xmlText, zoneExten
 function warningNames(speed: number): Record<number, string> {
   const limits = speedLimits(speed)
   return {
-    0: '前方施工 1600m', 400: '关闭智驾', 600: `限速 ${limits.first}`, 800: '前方施工 800m',
-    1000: `限速 ${limits.final}`, 1200: '禁止超车 / 车道减少',
+    0: '前方施工 1600m',
+    400: '关闭智驾',
+    800: `限速 ${limits.first}`,
+    1000: `限速 ${limits.final}`,
+    1200: '禁止超车 / 车道减少',
   }
 }
 const WARN_DESCS: Record<number, string> = {
-  0: '0m / 警告区起点', 400: '距警告区起点 400m', 600: '距警告区起点 600m',
-  800: '距警告区起点 800m', 1000: '距警告区起点 1000m', 1200: '距警告区起点 1200m',
+  0: '0m / 警告区起点',
+  400: '距警告区起点 400m',
+  800: '距警告区起点 800m',
+  1000: '距警告区起点 1000m',
+  1200: '距警告区起点 1200m',
 };
 
 /** 标志项目：名称 + 桩号（数字）+ 位置说明；双侧导出一行并排两车道桩号 */

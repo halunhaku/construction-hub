@@ -56,11 +56,13 @@ export default function PhaseCard({
               onClick={() => onViewPhoto(p)}
             />
             <button
+              type="button"
               className="thumb-del"
+              aria-label="删除这张照片"
               title="删除这张照片"
               onClick={() => onRemovePhoto(p.id)}
             >
-              ×
+              <span aria-hidden="true">×</span>
             </button>
             <div className="thumb-time">{formatTime(p.taken_at)}</div>
           </div>
@@ -68,10 +70,18 @@ export default function PhaseCard({
         {myPending.map((item) => (
           <div className="thumb thumb-pending" key={item.id}>
             <img src={item.preview} alt="待上传" />
-            <button className="thumb-del" title="移除" onClick={() => onRemovePending(item.id)}>
-              ×
-            </button>
-            <div className="thumb-time">待上传</div>
+            {uploading ? null : (
+              <button
+                type="button"
+                className="thumb-del"
+                aria-label="移除这张待传照片"
+                title="移除"
+                onClick={() => onRemovePending(item.id)}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            )}
+            <div className="thumb-time">{uploading ? '上传中…' : '未传上'}</div>
           </div>
         ))}
         {photos.length === 0 && myPending.length === 0 && (
@@ -99,16 +109,16 @@ export default function PhaseCard({
         </label>
       </div>
 
-      {/* 本阶段的上传按钮：有待传照片时出现 */}
       {myPending.length > 0 && (
         <button
+          type="button"
           className="btn btn-primary btn-block phase-upload"
           onClick={onUpload}
           disabled={uploading}
         >
           {uploading
             ? `上传中… ${progress?.done ?? 0}/${progress?.total ?? myPending.length}`
-            : `上传 ${myPending.length} 张照片`}
+            : `重新上传 ${myPending.length} 张`}
         </button>
       )}
     </div>

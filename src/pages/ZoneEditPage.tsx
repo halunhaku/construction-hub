@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getZone, updateZone } from '../api'
 import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
+import { useUnsavedGuard } from '../useUnsavedGuard'
+import { focusFirstIssue, ZONE_ERROR_ORDER } from '../util'
 import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 
@@ -13,6 +15,16 @@ export default function ZoneEditPage({ id }: { id: string }) {
   const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [baseline, setBaseline] = useState<string | null>(null)
+  const snapshot = JSON.stringify(zone)
+  const dirty = !loading && baseline !== null && snapshot !== baseline
+  const allowLeave = useUnsavedGuard(dirty)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (loading || baseline !== null) return
+    setBaseline(JSON.stringify(zone))
+  }, [baseline, loading, zone])
 
   useEffect(() => {
     let cancelled = false
@@ -47,12 +59,14 @@ export default function ZoneEditPage({ id }: { id: string }) {
         zoneErrors.work ? `作业区长度：${zoneErrors.work}` : '',
       ].filter(Boolean)
       setError(messages.length ? `布置参数有误，请修正（红色提示处）：${messages.join('；')}` : '布置参数有误，请修正（红色提示处）')
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, ZONE_ERROR_ORDER.filter((key) => zoneErrors[key])))
       return
     }
     setSaving(true)
     setError('')
     try {
       await updateZone(id, { zone })
+      allowLeave()
       window.location.hash = `#/zones/${id}`
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败')
@@ -62,12 +76,12 @@ export default function ZoneEditPage({ id }: { id: string }) {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '布控区域', '编辑布控']} />
+      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '布控区域', href: '#/zones' }, { label: '编辑布控' }]} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = `#/zones/${id}`)}>
+          <a className="btn" href={`#/zones/${id}`}>
             ← 返回
-          </button>
+          </a>
           <h1>编辑布控区域</h1>
           <span className="topbar-spacer" />
         </header>
@@ -75,7 +89,7 @@ export default function ZoneEditPage({ id }: { id: string }) {
         {loading ? <div className="table-empty">正在加载布控区域…</div> : null}
 
         {!loading && (
-          <form className="form" onSubmit={(e) => void submit(e)} onChange={() => setError('')} noValidate>
+          <form ref={formRef} className="form" onSubmit={(e) => void submit(e)} onChange={() => setError('')} noValidate>
             <h2 className="form-section-title">作业区布置</h2>
             <div className="card form-card">
               <div className="form-row">

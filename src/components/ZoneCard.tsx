@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Hand, Layers3, Maximize2, MousePointer2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Maximize2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import { ZoneDiagrams } from '../zone/RoadDiagram'
 import { buildZones, mirrorZones, stake, zoneExtent } from '../zone/utils'
 import { signSchedule, signScheduleDouble } from '../zone/export'
@@ -9,13 +9,15 @@ import ZoneExportButtons from './ZoneExportButtons'
 export default function ZoneCard({
   params,
   onEdit,
+  editHref,
   onClear,
   workspace = false,
   clearLabel = '清除',
   hideClear = false,
 }: {
   params: ZoneParams
-  onEdit: () => void
+  onEdit?: () => void
+  editHref?: string
   onClear?: () => void
   workspace?: boolean
   /** 清除按钮文案：记录语境默认「清除」，独立布控区域传「删除布控」 */
@@ -61,9 +63,15 @@ export default function ZoneCard({
           <p className="zone-meta">{meta}</p>
         </div>
         <div className="zone-head-actions">
-          <button className="btn" onClick={onEdit}>
-            <Pencil /> 编辑
-          </button>
+          {editHref ? (
+            <a className="btn" href={editHref}>
+              <Pencil /> 编辑
+            </a>
+          ) : onEdit ? (
+            <button type="button" className="btn" onClick={onEdit}>
+              <Pencil /> 编辑
+            </button>
+          ) : null}
           {!hideClear && onClear ? (
             <button className="btn btn-danger" onClick={onClear}>
               <Trash2 /> {clearLabel}
@@ -75,13 +83,10 @@ export default function ZoneCard({
       <div className="zone-card-body">
         <div ref={diagramRef} className="diagram-stage zone-stage-vertical">
           {workspace ? (
-            <div className="diagram-tools" aria-label="图纸工具">
-              <button className="active" aria-label="选择"><MousePointer2 /></button>
-              <button aria-label="拖移"><Hand /></button>
-              <button aria-label="放大" onClick={() => setZoom((value) => Math.min(1.5, value + .1))}><ZoomIn /></button>
-              <button aria-label="缩小" onClick={() => setZoom((value) => Math.max(.7, value - .1))}><ZoomOut /></button>
-              <button aria-label="适应画布" onClick={() => setZoom(1)}><Maximize2 /></button>
-              <button aria-label="图层"><Layers3 /></button>
+            <div className="diagram-tools" aria-label="图纸缩放">
+              <button type="button" aria-label="放大" onClick={() => setZoom((value) => Math.min(1.5, value + .1))}><ZoomIn /></button>
+              <button type="button" aria-label="缩小" onClick={() => setZoom((value) => Math.max(.7, value - .1))}><ZoomOut /></button>
+              <button type="button" aria-label="恢复默认大小" onClick={() => setZoom(1)}><Maximize2 /></button>
             </div>
           ) : null}
           <ZoneDiagrams

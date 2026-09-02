@@ -156,15 +156,30 @@ describe('限速牌与标志位置', () => {
     assert.deepEqual(speedLimits(80), { first: 60, final: 40 })
   })
 
+  it('警告区按 0/400/800/1000/1200 布设，无 800m 施工牌', () => {
+    const rows = signSchedule(buildZones(defaults), 'up', 100)
+    assert.deepEqual(rows.slice(0, 5).map((row) => row[1]), [
+      '前方施工 1600m',
+      '关闭智驾',
+      '限速 80',
+      '限速 60',
+      '禁止超车 / 车道减少',
+    ])
+    assert.equal(rows.find((row) => row[1].includes('导向'))![1], '导向标志牌')
+    assert.equal(rows.find((row) => row[1].includes('路栏'))![1], '路栏 / 作业区长度')
+    assert.ok(!rows.some((row) => row[1] === '前方施工 800m'))
+  })
+
   it('100km/h 模板输出 80→60，80km/h 模板输出 60→40', () => {
     const zones = buildZones(defaults)
     const rows100 = signSchedule(zones, 'up', 100)
     const rows80 = signSchedule(zones, 'up', 80)
     assert.equal(rows100[2]![1], '限速 80')
-    assert.equal(rows100[4]![1], '限速 60')
+    assert.equal(rows100[3]![1], '限速 60')
+    assert.equal(rows100[4]![1], '禁止超车 / 车道减少')
     assert.match(rows100.at(-1)![1], /解除限速 60/)
     assert.equal(rows80[2]![1], '限速 60')
-    assert.equal(rows80[4]![1], '限速 40')
+    assert.equal(rows80[3]![1], '限速 40')
     assert.match(rows80.at(-1)![1], /解除限速 40/)
   })
 
@@ -173,17 +188,20 @@ describe('限速牌与标志位置', () => {
     const downParams = { ...defaults, direction: 'down' as const }
     const downRows = signSchedule(buildZones(downParams), 'down', 100)
     assert.equal(upRows[0]![2], 'K121+850')
-    assert.equal(upRows[2]![2], 'K122+450')
+    assert.equal(upRows[1]![2], 'K122+250')
+    assert.equal(upRows[2]![2], 'K122+650')
+    assert.equal(upRows[3]![2], 'K122+850')
+    assert.equal(upRows[4]![2], 'K123+050')
     assert.equal(downRows[0]![2], 'K125+750')
-    assert.equal(downRows[2]![2], 'K125+150')
+    assert.equal(downRows[2]![2], 'K124+950')
   })
 
   it('双侧布置输出两个方向的完整标志表', () => {
     const zones = buildZones({ ...defaults, workSide: 'median', doubleSide: true })
     const rows = signScheduleDouble(zones, 'up', 100)
-    assert.equal(rows.length, 18)
+    assert.equal(rows.length, 16)
     assert.match(rows[0]![3], /^上行/)
-    assert.match(rows[9]![3], /^下行/)
+    assert.match(rows[8]![3], /^下行/)
   })
 })
 

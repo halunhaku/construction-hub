@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { CalendarDays, Download, Edit3, ImagePlus, MapPin, Pencil, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Download, Edit3, ImagePlus, MapPin, Pencil, Trash2 } from 'lucide-react'
 import {
   deletePhoto,
   deleteRecord,
@@ -59,6 +59,12 @@ export default function RecordPage({ id }: { id: string }) {
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<number | null>(null)
 
+  const gallery = useMemo(
+    () => (record ? PHASES.flatMap((phase) => record.photos[phase.key]) : []),
+    [record],
+  )
+  const viewerIndex = viewer ? gallery.findIndex((photo) => photo.id === viewer.id) : -1
+
   const zoneParams = useMemo(
     () => (record?.zone_params ? parseZoneParams(record.zone_params) : null),
     [record],
@@ -82,21 +88,45 @@ export default function RecordPage({ id }: { id: string }) {
     flashTimer.current = window.setTimeout(() => setFlash(''), 4000)
   }
 
-  function addPending(phase: Phase, files: File[]) {
-    try {
-      const items = files.map((file) => ({ id: uid(), phase, file, preview: URL.createObjectURL(file) }))
-      setPending((current) => [...current, ...items])
-      setError('')
-    } catch (reason) {
-      setError('添加照片失败：' + (reason instanceof Error ? reason.message : String(reason)))
-    }
-  }
-
-  const addPendingRef = useRef(addPending)
-  addPendingRef.current = addPending
-  // 记录最新 pending 列表，供组件卸载时统一释放 objectURL（防止离开页面后内存泄漏）
+  const recordRef = useRef(record)
+  recordRef.current = record
   const pendingRef = useRef<PendingItem[]>([])
   pendingRef.current = pending
+  const uploadingRef = useRef<Phase | null>(null)
+
+  const uploadItemsRef = useRef<(phase: Phase, items: PendingItem[]) => Promise<void>>(async () => undefined)
+
+  async function uploadItems(phase: Phase, items: PendingItem[]) {
+    const currentRecord = recordRef.current
+    if (!currentRecord || items.length === 0 || uploadingRef.current) return
+    uploadingRef.current = phase
+    setUploadingPhase(phase)
+    setError('')
+    let succeeded = 0
+    let failed = 0
+    const succeededIds = new Set<string>()
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index]!
+      try {
+        const [blob, takenAt] = await Promise.all([compressImage(item.file), photoTakenAtUtc(item.file)])
+        await uploadPhoto(currentRecord.id, phase, blob, takenAt)
+        succeeded++
+        succeededIds.add(item.id)
+        URL.revokeObjectURL(item.preview)
+      } catch {
+        failed++
+      }
+      setProgress({ done: index + 1, total: items.length })
+    }
+    setPending((current) => current.filter((item) => !succeededIds.has(item.id)))
+    uploadingRef.current = null
+    setUploadingPhase(null)
+    await load()
+    if (failed && succeeded) showFlash(`上传完成：成功 ${succeeded} 张，失败 ${failed} 张，可点重新上传`)
+    else if (failed) showFlash(`上传失败 ${failed} 张，可点重新上传`)
+    else showFlash(`已上传 ${succeeded} 张照片`)
+  }
+  uploadItemsRef.current = uploadItems
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -105,9 +135,14 @@ export default function RecordPage({ id }: { id: string }) {
       const phase = input.dataset.phase as Phase
       const files = Array.from(input.files ?? [])
       input.value = ''
-      if (files.length > 0) {
-        showFlash(`已选择 ${files.length} 张照片，请点击上传`)
-        addPendingRef.current(phase, files)
+      if (files.length === 0) return
+      try {
+        const items = files.map((file) => ({ id: uid(), phase, file, preview: URL.createObjectURL(file) }))
+        setPending((current) => [...current, ...items])
+        setError('')
+        void uploadItemsRef.current(phase, items)
+      } catch (reason) {
+        setError('添加照片失败：' + (reason instanceof Error ? reason.message : String(reason)))
       }
     }
     document.addEventListener('change', handler, true)
@@ -137,6 +172,26 @@ export default function RecordPage({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  useEffect(() => {
+    if (!viewer) return
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setViewer(null)
+        return
+      }
+      if (event.key === 'ArrowLeft' && viewerIndex > 0) {
+        event.preventDefault()
+        setViewer(gallery[viewerIndex - 1]!)
+      }
+      if (event.key === 'ArrowRight' && viewerIndex >= 0 && viewerIndex < gallery.length - 1) {
+        event.preventDefault()
+        setViewer(gallery[viewerIndex + 1]!)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [gallery, viewer, viewerIndex])
+
   function removePending(itemId: string) {
     setPending((current) => {
       const item = current.find((candidate) => candidate.id === itemId)
@@ -145,29 +200,9 @@ export default function RecordPage({ id }: { id: string }) {
     })
   }
 
-  async function uploadPhase(phase: Phase) {
+  function retryPhase(phase: Phase) {
     const items = pending.filter((item) => item.phase === phase)
-    if (!record || items.length === 0 || uploadingPhase) return
-    setUploadingPhase(phase)
-    setError('')
-    let succeeded = 0
-    let failed = 0
-    for (let index = 0; index < items.length; index++) {
-      try {
-        const file = items[index]!.file
-        const [blob, takenAt] = await Promise.all([compressImage(file), photoTakenAtUtc(file)])
-        await uploadPhoto(record.id, phase, blob, takenAt)
-        succeeded++
-      } catch {
-        failed++
-      }
-      setProgress({ done: index + 1, total: items.length })
-    }
-    items.forEach((item) => URL.revokeObjectURL(item.preview))
-    setPending((current) => current.filter((item) => item.phase !== phase))
-    setUploadingPhase(null)
-    await load()
-    showFlash(failed ? `上传完成：成功 ${succeeded} 张，失败 ${failed} 张` : `已上传 ${succeeded} 张照片`)
+    void uploadItems(phase, items)
   }
 
   async function removePhoto(photoId: string) {
@@ -180,7 +215,7 @@ export default function RecordPage({ id }: { id: string }) {
     }
   }
 
-  /** 把当前作业区布置渲染成 A4 纵向 JPG（布置图 1～2 张 + 一览表，与「导出图纸 JPG」一致） */
+  /** 把当前作业区布置渲染成 A4 纵向 JPG（布置图 1～2 张 + 一览表，与「导出 JPG」一致） */
   async function buildExportBlobs(): Promise<{ diagrams: { name: string; blob: Blob }[]; table: Blob } | null> {
     if (!zoneParams) return null
     const svgs = [...document.querySelectorAll<SVGSVGElement>('.diagram-stage .roadSvg')]
@@ -298,7 +333,7 @@ export default function RecordPage({ id }: { id: string }) {
   }
 
   if (!record) {
-    return <div className="app-frame"><AppHeader trail={['项目', '记录管理', '记录详情']} /><div className="page-loading">{error || '正在加载记录…'}</div></div>
+    return <div className="app-frame"><AppHeader trail={[{ label: '首页', href: '#/' }, { label: '记录详情' }]} /><div className="page-loading">{error || '正在加载记录…'}</div></div>
   }
 
   const status = recordState(record)
@@ -306,7 +341,15 @@ export default function RecordPage({ id }: { id: string }) {
 
   return (
     <div className="app-frame detail-frame">
-      <AppHeader trail={['项目', '记录管理', '记录详情']} project={`${record.project_name} · ${record.section}`} projectKey={record.project_name} />
+      <AppHeader
+        trail={[
+          { label: '首页', href: '#/' },
+          { label: record.project_name, href: `#/project/${encodeURIComponent(record.project_name)}` },
+          { label: '记录详情' },
+        ]}
+        project={`${record.project_name} · ${record.section}`}
+        projectKey={record.project_name}
+      />
       <div className="detail-shell">
         <aside className="record-sidebar">
           <div className="sidebar-project">
@@ -321,10 +364,11 @@ export default function RecordPage({ id }: { id: string }) {
             {projectRecords.map((item) => {
               const itemStatus = recordStateFromCounts(item.photo_counts)
               return (
-                <button
+                <a
                   className={`sidebar-record${item.id === id ? ' active' : ''}`}
                   key={item.id}
-                  onClick={() => (window.location.hash = `#/record/${item.id}`)}
+                  href={`#/record/${item.id}`}
+                  aria-current={item.id === id ? 'page' : undefined}
                 >
                   <span className="sidebar-record-title">
                     <strong>{item.stake} {directionLabel(item.direction)}</strong>
@@ -332,7 +376,7 @@ export default function RecordPage({ id }: { id: string }) {
                   </span>
                   <span>{item.content || item.work_location || '未填写施工内容'}</span>
                   <small>{item.work_date}</small>
-                </button>
+                </a>
               )
             })}
           </div>
@@ -348,12 +392,12 @@ export default function RecordPage({ id }: { id: string }) {
               <button className="btn btn-secondary" onClick={() => void downloadAll()} disabled={downloading}>
                 <Download /> {downloading ? '打包中…' : '导出档案'}
               </button>
-              <button className="btn" onClick={() => (window.location.hash = `#/record/${id}/edit`)}>
+              <a className="btn" href={`#/record/${id}/edit`}>
                 <Pencil /> 编辑
-              </button>
-              <button className="btn btn-primary" onClick={() => (window.location.hash = `#/record/${id}/zone`)}>
+              </a>
+              <a className="btn btn-primary" href={`#/record/${id}/zone`}>
                 <Edit3 /> {zoneParams ? '编辑布置' : '创建布置'}
-              </button>
+              </a>
               {zoneParams ? (
                 <button className="btn btn-danger" onClick={() => void clearZone()}>
                   <Trash2 /> 清除布置
@@ -362,18 +406,18 @@ export default function RecordPage({ id }: { id: string }) {
             </div>
           </header>
           {error ? <div className="notice error">{error}</div> : null}
-          {flash ? <div className="flash">{flash}</div> : null}
+          {flash ? <div className="flash" role="status" aria-live="polite">{flash}</div> : null}
 
           {zoneParams ? (
-            <ZoneCard params={zoneParams} onEdit={() => (window.location.hash = `#/record/${id}/zone`)} onClear={clearZone} workspace />
+            <ZoneCard params={zoneParams} editHref={`#/record/${id}/zone`} onClear={clearZone} workspace />
           ) : (
             <section className="drawing-empty">
               <MapPin />
               <h2>还没有作业区布置图</h2>
               <p>根据导入的起始桩号和方向生成分区、标志牌与锥桶布置。</p>
-              <button className="btn btn-primary" onClick={() => (window.location.hash = `#/record/${id}/zone`)}>
+              <a className="btn btn-primary" href={`#/record/${id}/zone`}>
                 <Edit3 /> 创建布置
-              </button>
+              </a>
             </section>
           )}
 
@@ -392,7 +436,7 @@ export default function RecordPage({ id }: { id: string }) {
                   pending={pending}
                   uploading={uploadingPhase === phase.key}
                   progress={uploadingPhase === phase.key ? progress : null}
-                  onUpload={() => void uploadPhase(phase.key)}
+                  onUpload={() => retryPhase(phase.key)}
                   onRemovePending={removePending}
                   onRemovePhoto={(photoId) => void removePhoto(photoId)}
                   onViewPhoto={setViewer}
@@ -453,10 +497,45 @@ export default function RecordPage({ id }: { id: string }) {
       </div>
 
       {viewer ? (
-        <button className="photo-viewer" onClick={() => setViewer(null)} aria-label="关闭照片预览">
+        <div
+          className="photo-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="照片预览"
+          onClick={() => setViewer(null)}
+        >
+          {viewerIndex > 0 ? (
+            <button
+              type="button"
+              className="photo-viewer-nav prev"
+              aria-label="上一张"
+              onClick={(event) => {
+                event.stopPropagation()
+                setViewer(gallery[viewerIndex - 1]!)
+              }}
+            >
+              <ChevronLeft />
+            </button>
+          ) : null}
+          {viewerIndex >= 0 && viewerIndex < gallery.length - 1 ? (
+            <button
+              type="button"
+              className="photo-viewer-nav next"
+              aria-label="下一张"
+              onClick={(event) => {
+                event.stopPropagation()
+                setViewer(gallery[viewerIndex + 1]!)
+              }}
+            >
+              <ChevronRight />
+            </button>
+          ) : null}
           <img src={photoUrl(viewer.id)} alt="照片预览" />
-          <span>点击任意处关闭</span>
-        </button>
+          <span className="photo-viewer-caption">
+            {gallery.length > 1 ? `${viewerIndex + 1} / ${gallery.length} · ` : ''}
+            Esc 关闭{gallery.length > 1 ? ' · 左右键切换' : ''}
+          </span>
+        </div>
       ) : null}
     </div>
   )

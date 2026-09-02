@@ -3,7 +3,7 @@ import type { Direction, Params, Zone, ZoneMeta } from './types';
 /* ── 常量 ────────────────────────────────────────────── */
 
 export const zoneMeta: ZoneMeta[] = [
-  {key:'warning',name:'警告区',color:'#FF9F0A',description:'按0/400/600/800/1000/1200m设置标志，区域内不摆锥桶'},
+  {key:'warning',name:'警告区',color:'#FF9F0A',description:'按0/400/800/1000/1200m设置标志，区域内不摆锥桶'},
   {key:'taper',name:'上游过渡区',color:'#0A84FF',description:'锥桶斜向渐变导流；50m处设置导向箭头'},
   {key:'buffer',name:'缓冲区',color:'#5AC8FA',description:'入口设置路栏及作业区长度标志，保留安全净空'},
   {key:'work',name:'作业区',color:'#FF3B30',description:'沿封闭车道连续摆放锥桶，设备与人员在内作业'},
@@ -17,8 +17,8 @@ export const defaults: Params = {
   speed:100, coneGap:4
 };
 
-/* 警告区标志设置偏移（距警告区起点，米）；超出警告区实际长度的标志不设置 */
-export const warningSignOffsets = [0, 400, 600, 800, 1000, 1200] as const;
+/* 警告区标志距起点（米）：施工1600、智驾、起始限速、最终限速、车道减少/禁超；超出警告区实际长度的不设置 */
+export const warningSignOffsets = [0, 400, 800, 1000, 1200] as const;
 
 /** 本项目的高速公路逐级限速口径。 */
 export function speedLimits(speed: number): { first: 60 | 80; final: 40 | 60 } {

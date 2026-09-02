@@ -27,6 +27,22 @@ export function isValidWorkDate(value: string): boolean {
  * 优先用 crypto.randomUUID；部分旧版浏览器 / 微信 X5 内核 WebView 未实现该 API，
  * 直接调用会抛异常导致事件回调中断，这里做降级处理。
  */
+/** 校验失败后按字段名顺序滚到并聚焦第一个问题项；若在折叠的高级参数里会先展开。 */
+export const ZONE_ERROR_ORDER = ['start', 'work', 'workSide', 'taper', 'buffer', 'downstream', 'terminal', 'coneGap', 'speed', 'warning']
+
+export function focusFirstIssue(root: ParentNode | null, names: string[]) {
+  if (!root) return
+  for (const name of names) {
+    const el = root.querySelector(`[name="${name}"]`)
+    if (!(el instanceof HTMLElement)) continue
+    const details = el.closest('details')
+    if (details && !details.open) details.open = true
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.focus()
+    return
+  }
+}
+
 export function uid(): string {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

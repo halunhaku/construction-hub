@@ -35,7 +35,7 @@ export default function ZonesPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '布控区域']} />
+      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '布控区域' }]} />
       <main className="registry-page">
         <section className="registry-heading">
           <div>
@@ -44,10 +44,10 @@ export default function ZonesPage() {
             <p>独立设置与管理作业区布置图，不依赖施工记录，可随时打印或发群确认。</p>
           </div>
           <div className="heading-actions">
-            <button className="btn btn-primary" onClick={() => (window.location.hash = '#/layout')}>
+            <a className="btn btn-primary" href="#/layout">
               <Plus />
               新建布控
-            </button>
+            </a>
           </div>
         </section>
 
@@ -81,10 +81,10 @@ export default function ZonesPage() {
         {!loading && visible.length ? (
           <section className="zone-list" aria-label="布控区域列表">
             {visible.map((zone) => (
-              <button
+              <a
                 key={zone.id}
                 className="zone-list-item"
-                onClick={() => (window.location.hash = `#/zones/${zone.id}`)}
+                href={`#/zones/${zone.id}`}
               >
                 <span className="zone-list-icon">
                   <TrafficCone aria-hidden="true" />
@@ -102,7 +102,7 @@ export default function ZonesPage() {
                   </em>
                   <ChevronRight aria-hidden="true" />
                 </span>
-              </button>
+              </a>
             ))}
           </section>
         ) : null}

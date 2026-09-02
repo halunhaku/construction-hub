@@ -1,11 +1,11 @@
 import { LogIn, Signpost, TrafficCone } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
-import { goToLogin } from '../guestZone'
+import { safeReturnHash, setLoginIntent } from '../guestZone'
 
 export default function GuestHome() {
   return (
     <div className="app-frame">
-      <AppHeader trail={['布置图']} />
+      <AppHeader />
       <main className="dashboard-page">
         <section className="dashboard-heading">
           <div>
@@ -15,18 +15,22 @@ export default function GuestHome() {
           </div>
         </section>
         <section className="guest-actions">
-          <button className="btn btn-primary" onClick={() => (window.location.hash = '#/layout')}>
+          <a className="btn btn-primary" href="#/layout">
             <TrafficCone />
             开始布置
-          </button>
-          <button className="btn btn-secondary" onClick={() => (window.location.hash = '#/signs')}>
+          </a>
+          <a className="btn btn-secondary" href="#/signs">
             <Signpost />
             标志牌 SVG
-          </button>
-          <button className="btn" onClick={() => goToLogin()}>
+          </a>
+          <a
+            className="btn"
+            href="#/login"
+            onClick={() => setLoginIntent({ returnHash: safeReturnHash(window.location.hash || '#/'), save: false })}
+          >
             <LogIn />
             登录
-          </button>
+          </a>
         </section>
       </main>
     </div>

@@ -48,17 +48,18 @@ export default function ZoneDetailPage({ id }: { id: string }) {
     }
   }
 
-  if (error) return <div className="app-frame"><AppHeader trail={['首页', '布控区域', '详情']} /><div className="page notice error">{error}</div></div>
-  if (!item || !params) return <div className="app-frame"><AppHeader trail={['首页', '布控区域', '详情']} /><div className="table-empty">正在加载布控区域…</div></div>
+  const zoneTrail = [{ label: '首页', href: '#/' }, { label: '布控区域', href: '#/zones' }, { label: '详情' }]
+  if (error) return <div className="app-frame"><AppHeader trail={zoneTrail} /><div className="page notice error">{error}</div></div>
+  if (!item || !params) return <div className="app-frame"><AppHeader trail={zoneTrail} /><div className="table-empty">正在加载布控区域…</div></div>
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '布控区域', '详情']} />
+      <AppHeader trail={zoneTrail} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = '#/zones')}>
+          <a className="btn" href="#/zones">
             ← 返回
-          </button>
+          </a>
           <h1>布控区域</h1>
           <span className="topbar-spacer" />
         </header>
@@ -85,7 +86,7 @@ export default function ZoneDetailPage({ id }: { id: string }) {
         {actionError ? <div className="notice error">{actionError}</div> : null}
         <ZoneCard
           params={params}
-          onEdit={() => (window.location.hash = `#/zones/${item.id}/edit`)}
+          editHref={`#/zones/${item.id}/edit`}
           onClear={handleDelete}
           clearLabel="删除布控"
         />

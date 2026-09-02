@@ -51,7 +51,12 @@ export default function ListPage({ project }: { project?: string }) {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={project ? ['首页', project, '施工记录'] : ['首页', '施工记录']} project={project} />
+      <AppHeader
+        trail={project
+          ? [{ label: '首页', href: '#/' }, { label: project }]
+          : [{ label: '首页', href: '#/' }, { label: '施工记录' }]}
+        project={project}
+      />
       <main className="registry-page">
         <section className="registry-heading">
           <div>
@@ -66,10 +71,10 @@ export default function ListPage({ project }: { project?: string }) {
                 void load(projectQuery)
               }}
             />
-            <button className="btn btn-primary" onClick={() => (window.location.hash = project ? `#/new/${encodeURIComponent(project)}` : '#/new')}>
+            <a className="btn btn-primary" href={project ? `#/new/${encodeURIComponent(project)}` : '#/new'}>
               <Plus />
               新建记录
-            </button>
+            </a>
           </div>
         </section>
 
@@ -138,10 +143,10 @@ export default function ListPage({ project }: { project?: string }) {
           {!loading ? visible.map((record) => {
             const complete = isPhotoComplete(record.photo_counts)
             return (
-              <button
+              <a
                 className="registry-row"
                 key={record.id}
-                onClick={() => (window.location.hash = `#/record/${record.id}`)}
+                href={`#/record/${record.id}`}
               >
                 <span className="stake-cell">
                   <MapPin aria-hidden="true" />
@@ -155,7 +160,7 @@ export default function ListPage({ project }: { project?: string }) {
                   {complete ? <CircleCheck /> : <CircleAlert />}
                   {complete ? '已完整' : '待补充'}
                 </span>
-              </button>
+              </a>
             )
           }) : null}
         </section>

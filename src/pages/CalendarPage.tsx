@@ -84,12 +84,12 @@ export default function CalendarPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['首页', '施工日历']} />
+      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '施工日历' }]} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = '#/')}>
+          <a className="btn" href="#/">
             ← 返回
-          </button>
+          </a>
           <h1>施工日历</h1>
           <span className="topbar-spacer" />
         </header>
@@ -158,7 +158,7 @@ export default function CalendarPage() {
           ) : (
             <div className="calendar-day-list">
               {records.map((r) => (
-                <button key={r.id} className="calendar-day-item" onClick={() => (window.location.hash = `#/record/${r.id}`)}>
+                <a key={r.id} className="calendar-day-item" href={`#/record/${r.id}`}>
                   <div className="calendar-day-item-main">
                     <strong>{r.stake}</strong>
                     <span>{directionLabel(r.direction)}</span>
@@ -169,7 +169,7 @@ export default function CalendarPage() {
                   ) : (
                     <span className="status-chip incomplete"><CircleAlert />资料待补充</span>
                   )}
-                </button>
+                </a>
               ))}
             </div>
           )}

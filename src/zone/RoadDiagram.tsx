@@ -271,8 +271,7 @@ export function RoadDiagram({
   const warnTypes: Record<number, SignType> = {
     0: 'construction1600',
     400: 'smart',
-    600: limits.first === 80 ? 'limit80' : 'limit60',
-    800: 'construction800',
+    800: limits.first === 80 ? 'limit80' : 'limit60',
     1000: limits.final === 60 ? 'limit60' : 'limit40',
     1200: closeInner ? 'laneLeft' : 'laneRight',
   }
@@ -427,7 +426,7 @@ export function RoadDiagram({
       const type = warnTypes[offset]!
       const along = warnFirst + (warnLast - warnFirst) * t
       marks.push({ along, type, side: 'work' })
-      if (type === 'construction1600' || type === 'construction800') {
+      if (type === 'construction1600') {
         marks.push({ along, type, side: 'opp' })
       }
     })

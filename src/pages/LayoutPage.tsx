@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createZone } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
@@ -12,6 +12,8 @@ import {
   setGuestSaveError,
 } from '../guestZone'
 import type { ZoneParams } from '../types'
+import { useUnsavedGuard } from '../useUnsavedGuard'
+import { focusFirstIssue, ZONE_ERROR_ORDER } from '../util'
 import { defaults, parseStake, stake } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 
@@ -25,6 +27,15 @@ export default function LayoutPage() {
   const [error, setError] = useState(readGuestSaveError)
   const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [baseline] = useState(() => JSON.stringify(initialZone()))
+  const allowLeave = useUnsavedGuard(JSON.stringify(zone) !== baseline)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  function revealZoneErrors(errors: Record<string, string>) {
+    setShowZoneErrors(true)
+    setError(errors.start ? `起始桩号：${errors.start}` : errors.work ? `作业区长度：${errors.work}` : '布置参数有误，请修正')
+    requestAnimationFrame(() => focusFirstIssue(formRef.current, ZONE_ERROR_ORDER.filter((key) => errors[key])))
+  }
 
   useEffect(() => {
     saveGuestZone(zone)
@@ -36,25 +47,25 @@ export default function LayoutPage() {
   })()
 
   function openPreview() {
-    setShowZoneErrors(true)
     const errors = validateZone(zone)
     if (Object.keys(errors).length > 0) {
-      setError(errors.start ? `起始桩号：${errors.start}` : errors.work ? `作业区长度：${errors.work}` : '布置参数有误，请修正')
+      revealZoneErrors(errors)
       return
     }
     saveGuestZone(zone)
+    allowLeave()
     window.location.hash = '#/layout/view'
   }
 
   async function save() {
-    setShowZoneErrors(true)
     const errors = validateZone(zone)
     if (Object.keys(errors).length > 0) {
-      setError(errors.start ? `起始桩号：${errors.start}` : errors.work ? `作业区长度：${errors.work}` : '布置参数有误，请修正')
+      revealZoneErrors(errors)
       return
     }
     saveGuestZone(zone)
     if (!user) {
+      allowLeave()
       goToLogin({ save: true })
       return
     }
@@ -63,6 +74,7 @@ export default function LayoutPage() {
     try {
       const result = await createZone({ zone })
       clearGuestZone()
+      allowLeave()
       window.location.hash = `#/zones/${result.id}`
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '保存失败')
@@ -72,12 +84,12 @@ export default function LayoutPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['布置图']} />
+      <AppHeader trail={[{ label: '布置图' }]} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = '#/')}>
+          <a className="btn" href="#/">
             {user ? '← 首页' : '← 返回'}
-          </button>
+          </a>
           <h1>作业区布置</h1>
           <span className="topbar-spacer" />
         </header>
@@ -89,6 +101,7 @@ export default function LayoutPage() {
         </p>
 
         <form
+          ref={formRef}
           className="form"
           onSubmit={(e) => {
             e.preventDefault()

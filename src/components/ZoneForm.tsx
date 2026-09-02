@@ -70,18 +70,22 @@ export default function ZoneForm({
                 <label>
                   作业区起点（桩号）
                   <input
+                    name="start"
                     placeholder="例如：K123+800"
                     value={form.start}
+                    aria-invalid={Boolean(errors.start)}
                     onChange={(e) => set('start', e.target.value)}
                   />
                 </label>
                 <label>
                   作业区长度（m）
                   <input
+                    name="work"
                     type="number"
                     min={10}
                     max={4000}
                     value={form.work}
+                    aria-invalid={Boolean(errors.work)}
                     onChange={(e) => set('work', Number(e.target.value))}
                   />
                 </label>
@@ -119,9 +123,10 @@ export default function ZoneForm({
             )}
             <div className="field-block">
               <span className="field-label">施工位置</span>
-              <div className="seg" role="radiogroup" aria-label="施工位置">
+              <div className="seg" role="radiogroup" aria-label="施工位置" aria-invalid={Boolean(errors.workSide)}>
                 <button
                   type="button"
+                  name="workSide"
                   role="radio"
                   aria-checked={form.workSide === 'roadside'}
                   className={form.workSide === 'roadside' ? 'active' : ''}
@@ -173,20 +178,24 @@ export default function ZoneForm({
             <label>
               过渡区基准（m）
               <input
+                name="taper"
                 type="number"
                 min={120}
                 max={200}
                 value={form.taper}
+                aria-invalid={Boolean(errors.taper)}
                 onChange={(e) => set('taper', Number(e.target.value))}
               />
             </label>
             <label>
               缓冲区基准（m）
               <input
+                name="buffer"
                 type="number"
                 min={100}
                 max={150}
                 value={form.buffer}
+                aria-invalid={Boolean(errors.buffer)}
                 onChange={(e) => set('buffer', Number(e.target.value))}
               />
             </label>
@@ -202,9 +211,11 @@ export default function ZoneForm({
                 <label>
                   下游过渡区（m）
                   <input
+                    name="downstream"
                     type="number"
                     min={30}
                     value={form.downstream}
+                    aria-invalid={Boolean(errors.downstream)}
                     onChange={(e) => set('downstream', Number(e.target.value))}
                   />
                 </label>
@@ -214,19 +225,23 @@ export default function ZoneForm({
                 <label>
                   终止区长度（m）
                   <input
+                    name="terminal"
                     type="number"
                     min={30}
                     value={form.terminal}
+                    aria-invalid={Boolean(errors.terminal)}
                     onChange={(e) => set('terminal', Number(e.target.value))}
                   />
                 </label>
                 <label>
                   锥桶间距（现场放样，m）
                   <input
+                    name="coneGap"
                     type="number"
                     min={1}
                     max={4}
                     value={form.coneGap}
+                    aria-invalid={Boolean(errors.coneGap)}
                     onChange={(e) => set('coneGap', Number(e.target.value))}
                   />
                 </label>
@@ -237,7 +252,9 @@ export default function ZoneForm({
               <label>
                 设计速度（km/h）
                 <select
+                  name="speed"
                   value={form.speed}
+                  aria-invalid={Boolean(errors.speed)}
                   onChange={(e) => set('speed', Number(e.target.value))}
                 >
                   <option value={100}>100</option>
@@ -270,7 +287,7 @@ export default function ZoneForm({
             />
             {allowExport ? (
               <>
-                <p className="pin-hint">导出图纸不会写入系统。登录后才能把布置保存到列表。</p>
+                <p className="pin-hint">导出 PNG / JPG / PDF 不会写入系统。登录后才能把布置保存到列表。</p>
                 <ZoneExportButtons
                   params={form}
                   getSvgs={() => [...(previewRef.current?.querySelectorAll<SVGSVGElement>('.roadSvg') ?? [])]}

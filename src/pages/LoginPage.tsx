@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createZone, login } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
@@ -12,6 +12,7 @@ import {
   setGuestSaveError,
 } from '../guestZone'
 import { validateZone } from '../zone/validation'
+import { focusFirstIssue } from '../util'
 
 export default function LoginPage() {
   const { setUser } = useAuth()
@@ -19,11 +20,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const intended = safeReturnHash(peekLoginIntent()?.returnHash)
   const backHash = isPublicHash(intended) ? intended : '#/'
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!username.trim()) {
+      setError('请填写用户名')
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, ['username']))
+      return
+    }
+    if (!password) {
+      setError('请填写密码')
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, ['password']))
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -51,46 +63,46 @@ export default function LoginPage() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '登录失败')
       setBusy(false)
+      requestAnimationFrame(() => focusFirstIssue(formRef.current, ['password']))
     }
   }
 
   return (
     <div className="app-frame">
-      <AppHeader trail={['登录']} />
+      <AppHeader trail={[{ label: '登录' }]} />
       <div className="page">
         <header className="topbar">
-          <button className="btn" onClick={() => (window.location.hash = backHash)}>
+          <a className="btn" href={backHash}>
             ← 返回
-          </button>
+          </a>
           <h1>登录</h1>
           <span className="topbar-spacer" />
         </header>
-        <form className="form login-form" onSubmit={(e) => void submit(e)}>
+        <form ref={formRef} className="form login-form" onSubmit={(e) => void submit(e)}>
           <div className="card form-card">
-            <div className="form-row">
-              <label>
-                用户名
-                <input
-                  autoComplete="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="内部账号"
-                />
-              </label>
-            </div>
-            <div className="form-row">
-              <label>
-                密码
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
-            </div>
+            <label>
+              用户名
+              <input
+                name="username"
+                autoComplete="username"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="内部账号"
+              />
+            </label>
+            <label>
+              密码
+              <input
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
           </div>
-          {error ? <div className="notice error">{error}</div> : null}
+          {error ? <div className="notice error" role="alert">{error}</div> : null}
           <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
             {busy ? '登录中…' : '登录'}
           </button>
