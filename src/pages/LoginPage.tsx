@@ -12,7 +12,7 @@ import {
   setGuestSaveError,
 } from '../guestZone'
 import { validateZone } from '../zone/validation'
-import { focusFirstIssue } from '../util'
+import { focusFirstIssue } from '../focus'
 
 export default function LoginPage() {
   const { setUser } = useAuth()

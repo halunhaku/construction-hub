@@ -4,7 +4,7 @@ import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { useUnsavedGuard } from '../useUnsavedGuard'
-import { focusFirstIssue, ZONE_ERROR_ORDER } from '../util'
+import { focusFirstIssue, ZONE_ERROR_ORDER } from '../focus'
 import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 

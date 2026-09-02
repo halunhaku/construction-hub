@@ -13,7 +13,7 @@ import {
 } from '../guestZone'
 import type { ZoneParams } from '../types'
 import { useUnsavedGuard } from '../useUnsavedGuard'
-import { focusFirstIssue, ZONE_ERROR_ORDER } from '../util'
+import { focusFirstIssue, ZONE_ERROR_ORDER } from '../focus'
 import { defaults, parseStake, stake } from '../zone/utils'
 import { validateZone } from '../zone/validation'
 

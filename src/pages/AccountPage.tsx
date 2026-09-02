@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { changeOwnPassword } from '../api'
 import AppHeader from '../components/AppHeader'
-import { focusFirstIssue } from '../util'
+import { focusFirstIssue } from '../focus'
 
 export default function AccountPage() {
   const [current, setCurrent] = useState('')
