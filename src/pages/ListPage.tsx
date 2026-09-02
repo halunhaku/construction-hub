@@ -3,7 +3,7 @@ import { CircleAlert, CircleCheck, Images, MapPin, Plus, Search } from 'lucide-r
 import { getOptions, listRecords, type ListQuery } from '../api'
 import AppHeader from '../components/AppHeader'
 import ExcelImportButton from '../components/ExcelImportButton'
-import { directionLabel, isPhotoComplete, photoTotal, type RecordSummary } from '../types'
+import { directionLabel, isRecordComplete, photoTotal, recordStatus, type RecordSummary } from '../types'
 
 export default function ListPage({ project }: { project?: string }) {
   const projectQuery = project ? { project } : {}
@@ -11,7 +11,7 @@ export default function ListPage({ project }: { project?: string }) {
   const [records, setRecords] = useState<RecordSummary[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [lastImport, setLastImport] = useState<{ filename: string; count: number } | null>(null)
+  const [lastImport, setLastImport] = useState<{ filename: string; count: number; zoned: number } | null>(null)
   const [options, setOptions] = useState({ projects: [] as string[], highways: [] as string[], sections: [] as string[] })
 
   async function load(query: ListQuery = form) {
@@ -35,12 +35,12 @@ export default function ListPage({ project }: { project?: string }) {
   }, [project])
 
   const visible = useMemo(() => records.filter((record) => {
-    if (form.photo === 'complete') return isPhotoComplete(record.photo_counts)
-    if (form.photo === 'incomplete') return !isPhotoComplete(record.photo_counts)
+    if (form.photo === 'complete') return isRecordComplete(record.photo_counts, record.zone_params)
+    if (form.photo === 'incomplete') return !isRecordComplete(record.photo_counts, record.zone_params)
     return true
   }), [form.photo, records])
 
-  const completeCount = useMemo(() => visible.filter((record) => isPhotoComplete(record.photo_counts)).length, [visible])
+  const completeCount = useMemo(() => visible.filter((record) => isRecordComplete(record.photo_counts, record.zone_params)).length, [visible])
   const totalPhotos = useMemo(() => visible.reduce((total, record) => total + photoTotal(record.photo_counts), 0), [visible])
 
   function reset() {
@@ -67,7 +67,7 @@ export default function ListPage({ project }: { project?: string }) {
           <div className="heading-actions">
             <ExcelImportButton
               onImported={(summary) => {
-                setLastImport(summary)
+                setLastImport({ filename: summary.filename, count: summary.count, zoned: summary.zoned })
                 void load(projectQuery)
               }}
             />
@@ -81,7 +81,13 @@ export default function ListPage({ project }: { project?: string }) {
         {lastImport ? (
           <div className="import-success" role="status">
             <CircleCheck />
-            已从「{lastImport.filename}」导入 {lastImport.count} 条施工位置。
+            已从「{lastImport.filename}」导入 {lastImport.count} 条施工位置
+            {lastImport.zoned
+              ? `，其中 ${lastImport.zoned} 条已按起止桩号生成布置图`
+              : ''}
+            {lastImport.count > lastImport.zoned
+              ? `。未出图的请在记录里点「创建布置」`
+              : '。'}
           </div>
         ) : null}
         {error ? <div className="notice error">{error}</div> : null}
@@ -141,7 +147,7 @@ export default function ListPage({ project }: { project?: string }) {
           {loading ? <div className="table-empty">正在加载施工记录…</div> : null}
           {!loading && visible.length === 0 ? <div className="table-empty">暂无匹配记录，可直接导入 Excel 施工计划。</div> : null}
           {!loading ? visible.map((record) => {
-            const complete = isPhotoComplete(record.photo_counts)
+            const status = recordStatus(record.photo_counts, record.zone_params)
             return (
               <a
                 className="registry-row"
@@ -156,9 +162,9 @@ export default function ListPage({ project }: { project?: string }) {
                 <span>{record.content || '—'}</span>
                 <span className="numeric">{record.work_date}</span>
                 <span className="photo-cell"><Images aria-hidden="true" /> {photoTotal(record.photo_counts)} 张</span>
-                <span className={`status-chip ${complete ? 'complete' : 'incomplete'}`}>
-                  {complete ? <CircleCheck /> : <CircleAlert />}
-                  {complete ? '已完整' : '待补充'}
+                <span className={`status-chip ${status.className}`}>
+                  {status.complete ? <CircleCheck /> : <CircleAlert />}
+                  {status.label}
                 </span>
               </a>
             )

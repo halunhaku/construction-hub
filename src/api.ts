@@ -133,7 +133,7 @@ export interface DailyStat {
   complete: number
 }
 
-/** 日历聚合：某日期范围内每天的记录数与三照完整数 */
+/** 日历聚合：某日期范围内每天的记录数与资料完整数（布置图 + 三照） */
 export function fetchDaily(from: string, to: string): Promise<DailyStat[]> {
   return request<DailyStat[]>(`/records/daily?from=${from}&to=${to}`)
 }
@@ -198,8 +198,8 @@ export async function updateRecord(id: string, data: RecordForm): Promise<{ ok: 
 
 export async function importRecords(
   records: ImportRecordForm[],
-): Promise<{ count: number; ids: string[] }> {
-  const result = await request<{ count: number; ids: string[] }>('/records/import', {
+): Promise<{ count: number; ids: string[]; zoned: number }> {
+  const result = await request<{ count: number; ids: string[]; zoned: number }>('/records/import', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ records }),

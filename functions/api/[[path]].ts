@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
 import type { Params as ZoneParams } from '../../src/zone/types'
 import { isValidWorkDate } from '../../src/util.ts'
+import { layoutFromRecordStakes } from '../../src/zone/utils.ts'
 import { validateZone } from '../../src/zone/validation.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 import {
@@ -353,7 +354,7 @@ app.get('/projects', async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT r.project_name AS name,
             COUNT(*) AS count,
-            SUM(CASE WHEN IFNULL(ph.cnt, 0) >= 3 THEN 1 ELSE 0 END) AS complete_count,
+            SUM(CASE WHEN IFNULL(ph.cnt, 0) >= 3 AND IFNULL(TRIM(r.zone_params), '') != '' THEN 1 ELSE 0 END) AS complete_count,
             MIN(r.highway) AS highway,
             MIN(r.section) AS section,
             MIN(r.work_date) AS date_from,
@@ -487,6 +488,7 @@ app.post('/records/import', async (c) => {
 
   const ids: string[] = []
   const statements: D1PreparedStatement[] = []
+  let zoned = 0
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index] as Record<string, unknown>
     const sourceRow = Number(row.source_row) || index + 2
@@ -510,15 +512,18 @@ app.post('/records/import', async (c) => {
     }
     const id = crypto.randomUUID()
     ids.push(id)
+    const layout = layoutFromRecordStakes(stake, endStake, direction)
+    const zoneParams = layout ? JSON.stringify(layout) : null
+    if (zoneParams) zoned += 1
     statements.push(
       c.env.DB.prepare(
         `INSERT INTO records (id, project_name, highway, section, work_location, stake, end_stake, direction, content, work_date, zone_params)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-      ).bind(id, projectName, highway, section, workLocation, stake, endStake, direction, content, workDate),
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(id, projectName, highway, section, workLocation, stake, endStake, direction, content, workDate, zoneParams),
     )
   }
   await c.env.DB.batch(statements)
-  return c.json({ count: ids.length, ids }, 201)
+  return c.json({ count: ids.length, ids, zoned }, 201)
 })
 
 // 保存 / 清除作业区布置参数（zone 为 Params 对象或 null）
@@ -543,14 +548,14 @@ app.put('/records/:id/zone', async (c) => {
   return c.json({ ok: true, zone_params })
 })
 
-// 日历聚合：按施工日期统计记录数与三照完整数（用于月历标记）
+// 日历聚合：按施工日期统计记录数与资料完整数（布置图 + 三照，用于月历标记）
 app.get('/records/daily', async (c) => {
   const from = c.req.query('from') ?? ''
   const to = c.req.query('to') ?? ''
   const { results } = await c.env.DB.prepare(
     `SELECT r.work_date,
             COUNT(DISTINCT r.id) AS total,
-            COUNT(DISTINCT CASE WHEN ph.cnt >= 3 THEN r.id END) AS complete
+            COUNT(DISTINCT CASE WHEN ph.cnt >= 3 AND IFNULL(TRIM(r.zone_params), '') != '' THEN r.id END) AS complete
      FROM records r
      LEFT JOIN (
        SELECT record_id, COUNT(DISTINCT phase) AS cnt

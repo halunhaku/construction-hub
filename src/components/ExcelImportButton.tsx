@@ -8,6 +8,7 @@ type ImportSummary = {
   filename: string
   count: number
   ids: string[]
+  zoned: number
 }
 
 const HEADERS = [
@@ -106,7 +107,7 @@ export default function ExcelImportButton({
       const badDate = records.find((row) => !isValidWorkDate(row.work_date))
       if (badDate) throw new Error(`Excel 第 ${badDate.source_row} 行施工日期不是真实日期（应为 YYYY-MM-DD）`)
       const result = await importRecords(records)
-      onImported?.({ filename: file.name, count: result.count, ids: result.ids })
+      onImported?.({ filename: file.name, count: result.count, ids: result.ids, zoned: result.zoned ?? 0 })
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '导入失败')
     } finally {

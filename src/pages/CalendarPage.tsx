@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, CircleAlert, CircleCheck } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { fetchDaily, listRecords } from '../api'
-import { directionLabel, isPhotoComplete, type RecordSummary } from '../types'
+import { directionLabel, recordStatus, type RecordSummary } from '../types'
 import { today } from '../util'
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
@@ -130,7 +130,7 @@ export default function CalendarPage() {
                   {stat && (
                     <span
                       className={`calendar-dot${stat.complete >= stat.total ? ' done' : ''}`}
-                      title={`${stat.total} 条记录${stat.complete < stat.total ? `，${stat.complete} 条三照完整` : '，三照完整'}`}
+                      title={`${stat.total} 条记录${stat.complete < stat.total ? `，${stat.complete} 条资料完整` : '，资料完整'}`}
                     />
                   )}
                 </button>
@@ -140,7 +140,7 @@ export default function CalendarPage() {
 
           <div className="calendar-legend">
             <span><i className="calendar-dot" />有施工记录</span>
-            <span><i className="calendar-dot done" />三照完整</span>
+            <span><i className="calendar-dot done" />资料完整</span>
             <span><i className="calendar-today-mark" />今天</span>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function CalendarPage() {
         <section className="calendar-day-section">
           <h3>
             {selected.slice(5)} 的施工记录
-            {selectedStat ? <small>（{selectedStat.total} 条，{selectedStat.complete} 条三照完整）</small> : null}
+            {selectedStat ? <small>（{selectedStat.total} 条，{selectedStat.complete} 条资料完整）</small> : null}
           </h3>
 
           {loadingDay ? (
@@ -157,20 +157,22 @@ export default function CalendarPage() {
             <p className="calendar-empty">当天没有施工记录</p>
           ) : (
             <div className="calendar-day-list">
-              {records.map((r) => (
-                <a key={r.id} className="calendar-day-item" href={`#/record/${r.id}`}>
-                  <div className="calendar-day-item-main">
-                    <strong>{r.stake}</strong>
-                    <span>{directionLabel(r.direction)}</span>
-                    <span className="calendar-day-item-content">{r.content || r.project_name}</span>
-                  </div>
-                  {isPhotoComplete(r.photo_counts) ? (
-                    <span className="status-chip complete"><CircleCheck />资料完整</span>
-                  ) : (
-                    <span className="status-chip incomplete"><CircleAlert />资料待补充</span>
-                  )}
-                </a>
-              ))}
+              {records.map((r) => {
+                const status = recordStatus(r.photo_counts, r.zone_params)
+                return (
+                  <a key={r.id} className="calendar-day-item" href={`#/record/${r.id}`}>
+                    <div className="calendar-day-item-main">
+                      <strong>{r.stake}</strong>
+                      <span>{directionLabel(r.direction)}</span>
+                      <span className="calendar-day-item-content">{r.content || r.project_name}</span>
+                    </div>
+                    <span className={`status-chip ${status.className}`}>
+                      {status.complete ? <CircleCheck /> : <CircleAlert />}
+                      {status.label}
+                    </span>
+                  </a>
+                )
+              })}
             </div>
           )}
         </section>

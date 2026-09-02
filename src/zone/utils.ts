@@ -99,6 +99,29 @@ export function xmlText(value: string | number): string {
 
 /* ── 输入校验 ────────────────────────────────────────── */
 
+/**
+ * 用台账的起始/结束桩号生成默认布置图。
+ * 算不出长度、方向与桩号顺序冲突、或默认模板校验失败时返回 null（导入仍写入台账，布置留空）。
+ */
+export function layoutFromRecordStakes(start: string, end: string, direction: string): Params | null {
+  const startM = parseStake(start)
+  const endM = parseStake(end)
+  if (startM == null || endM == null) return null
+  const work = Math.abs(endM - startM)
+  if (work < 10 || work > 4000) return null
+  const inferred: Direction = endM >= startM ? 'up' : 'down'
+  if (direction === 'up' || direction === 'down') {
+    if (direction !== inferred) return null
+  }
+  const params: Params = {
+    ...defaults,
+    start: start.trim(),
+    work,
+    direction: direction === 'up' || direction === 'down' ? direction : inferred,
+  }
+  return Object.keys(validate(params)).length ? null : params
+}
+
 /** 解析 RoadZone 布置参数 JSON（宽容模式：未知/缺失字段回退，方向与施工位置枚举收紧） */
 export function parseZoneParams(json: string): Params | null {
   try {

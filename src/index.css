@@ -207,6 +207,7 @@ svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .status-chip { width: max-content; display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; font-size: 11px; }
 .status-chip svg { width: 13px; height: 13px; }
 .status-chip.complete { color: #117048; background: var(--green-soft); }
+.status-chip.progress { color: var(--blue-700); background: var(--blue-50); }
 .status-chip.incomplete { color: #a45d00; background: var(--orange-soft); }
 .table-empty { padding: 64px 20px; text-align: center; color: var(--muted); font-size: 14px; }
 

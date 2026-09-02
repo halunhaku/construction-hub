@@ -32,7 +32,7 @@ import {
 import { formatTime, uid } from '../util'
 
 function recordState(record: RecordItem): { label: string; className: string } {
-  return recordStateFromCounts(photoCountsOf(record))
+  return recordStateFromCounts(photoCountsOf(record), record.zone_params)
 }
 
 /**
@@ -362,7 +362,7 @@ export default function RecordPage({ id }: { id: string }) {
           <ExcelImportButton compact onImported={() => void load()} />
           <div className="sidebar-records">
             {projectRecords.map((item) => {
-              const itemStatus = recordStateFromCounts(item.photo_counts)
+              const itemStatus = recordStateFromCounts(item.photo_counts, item.zone_params)
               return (
                 <a
                   className={`sidebar-record${item.id === id ? ' active' : ''}`}
@@ -414,7 +414,7 @@ export default function RecordPage({ id }: { id: string }) {
             <section className="drawing-empty">
               <MapPin />
               <h2>还没有作业区布置图</h2>
-              <p>根据导入的起始桩号和方向生成分区、标志牌与锥桶布置。</p>
+              <p>有起始和结束桩号的导入会自动出图。其余请在这里按桩号生成分区、标志牌与锥桶布置。</p>
               <a className="btn btn-primary" href={`#/record/${id}/zone`}>
                 <Edit3 /> 创建布置
               </a>

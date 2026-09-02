@@ -73,10 +73,33 @@ export function photoTotal(counts: PhotoCounts): number {
   return counts.before + counts.during + counts.after
 }
 
-export function recordStateFromCounts(counts: PhotoCounts): { label: string; className: string } {
-  if (counts.before > 0 && counts.during > 0 && counts.after === 0) return { label: '施工中', className: 'progress' }
-  if (!isPhotoComplete(counts)) return { label: '资料待补充', className: 'incomplete' }
-  return { label: '已完整', className: 'complete' }
+export function hasZoneLayout(zoneParams: string | null | undefined): boolean {
+  return typeof zoneParams === 'string' && zoneParams.trim().length > 0
+}
+
+export function isRecordComplete(counts: PhotoCounts, zoneParams: string | null | undefined): boolean {
+  return hasZoneLayout(zoneParams) && isPhotoComplete(counts)
+}
+
+/** 台账完整度：有布置图且三阶段照片齐全才算已完整。 */
+export function recordStatus(
+  counts: PhotoCounts,
+  zoneParams: string | null | undefined,
+): { label: string; className: string; complete: boolean } {
+  const hasZone = hasZoneLayout(zoneParams)
+  const hasPhotos = isPhotoComplete(counts)
+  if (hasZone && hasPhotos) return { label: '已完整', className: 'complete', complete: true }
+  if (hasZone && counts.before > 0 && counts.during > 0 && counts.after === 0) {
+    return { label: '施工中', className: 'progress', complete: false }
+  }
+  if (!hasZone && hasPhotos) return { label: '缺布置图', className: 'incomplete', complete: false }
+  if (hasZone && !hasPhotos) return { label: '缺照片', className: 'incomplete', complete: false }
+  return { label: '缺布置图和照片', className: 'incomplete', complete: false }
+}
+
+export function recordStateFromCounts(counts: PhotoCounts, zoneParams?: string | null): { label: string; className: string } {
+  const status = recordStatus(counts, zoneParams ?? null)
+  return { label: status.label, className: status.className }
 }
 
 export interface RecordForm {

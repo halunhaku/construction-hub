@@ -4,6 +4,7 @@ import { buildExportPages, signSchedule, signScheduleDouble } from '../src/zone/
 import {
   buildZones,
   defaults,
+  layoutFromRecordStakes,
   mirrorZones,
   parseStake,
   parseZoneParams,
@@ -104,6 +105,34 @@ describe('参数校验', () => {
 
   it('双侧占路仅允许中央分隔带施工', () => {
     assert.ok(validate({ ...defaults, doubleSide: true, workSide: 'roadside' }).workSide)
+  })
+})
+
+describe('台账桩号生成布置图', () => {
+  it('有起止桩号且方向一致时按长度套默认模板', () => {
+    const layout = layoutFromRecordStakes('K128+600', 'K128+700', 'up')
+    assert.ok(layout)
+    assert.equal(layout.work, 100)
+    assert.equal(layout.direction, 'up')
+    assert.equal(layout.start, 'K128+600')
+    assert.equal(layout.warning, defaults.warning)
+    assert.equal(layout.speed, defaults.speed)
+  })
+
+  it('未填方向时按桩号增减推断上下行', () => {
+    const up = layoutFromRecordStakes('K128+600', 'K129+600', '')
+    const down = layoutFromRecordStakes('K129+600', 'K128+600', '')
+    assert.equal(up?.direction, 'up')
+    assert.equal(up?.work, 1000)
+    assert.equal(down?.direction, 'down')
+    assert.equal(down?.work, 1000)
+  })
+
+  it('缺结束桩号、方向冲突或模板校验失败时不出图', () => {
+    assert.equal(layoutFromRecordStakes('K128+600', '', 'up'), null)
+    assert.equal(layoutFromRecordStakes('K128+600', 'K128+700', 'down'), null)
+    assert.equal(layoutFromRecordStakes('K0+100', 'K0+200', 'up'), null)
+    assert.equal(layoutFromRecordStakes('K128+600', 'K128+605', 'up'), null)
   })
 })
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { isPublicHash, safeReturnHash } from '../src/guestZone.ts'
-import { isPhotoComplete, photoTotal, recordStateFromCounts } from '../src/types.ts'
+import { isPhotoComplete, isRecordComplete, photoTotal, recordStatus } from '../src/types.ts'
 import { isValidWorkDate } from '../src/util.ts'
 
 describe('登录回跳地址', () => {
@@ -44,11 +44,28 @@ describe('施工日期', () => {
 })
 
 describe('照片完整度', () => {
-  it('三阶段各至少 1 张才算完整', () => {
+  it('三阶段各至少 1 张才算照片齐全', () => {
     assert.equal(isPhotoComplete({ before: 1, during: 1, after: 1 }), true)
     assert.equal(isPhotoComplete({ before: 2, during: 0, after: 3 }), false)
     assert.equal(photoTotal({ before: 1, during: 2, after: 3 }), 6)
-    assert.equal(recordStateFromCounts({ before: 1, during: 1, after: 0 }).label, '施工中')
-    assert.equal(recordStateFromCounts({ before: 1, during: 1, after: 1 }).label, '已完整')
+  })
+})
+
+describe('台账资料完整度', () => {
+  const photos = { before: 1, during: 1, after: 1 }
+  const zone = JSON.stringify({ start: 'K128+600' })
+
+  it('已完整必须同时有布置图和三照', () => {
+    assert.equal(isRecordComplete(photos, zone), true)
+    assert.equal(isRecordComplete(photos, null), false)
+    assert.equal(isRecordComplete({ before: 1, during: 1, after: 0 }, zone), false)
+    assert.equal(recordStatus(photos, zone).label, '已完整')
+  })
+
+  it('不齐时区分缺布置图、缺照片、施工中', () => {
+    assert.equal(recordStatus(photos, null).label, '缺布置图')
+    assert.equal(recordStatus({ before: 1, during: 0, after: 0 }, zone).label, '缺照片')
+    assert.equal(recordStatus({ before: 1, during: 1, after: 0 }, zone).label, '施工中')
+    assert.equal(recordStatus({ before: 0, during: 0, after: 0 }, null).label, '缺布置图和照片')
   })
 })
