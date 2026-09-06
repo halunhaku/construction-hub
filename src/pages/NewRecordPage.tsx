@@ -26,10 +26,6 @@ function recordSnapshot(form: RecordForm, zone: ZoneParams | null) {
   return JSON.stringify({ form: rest, zone })
 }
 
-const DIRECTIONS = [
-  { value: 'up', label: '上行' },
-  { value: 'down', label: '下行' },
-]
 
 export default function NewRecordPage({ project, id }: { project?: string; id?: string }) {
   const editing = Boolean(id)
@@ -314,19 +310,29 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
           </label>
         </div>
 
-        <label>
-          方向
-          <select
-            value={form.direction}
-            onChange={(e) => handleDirection(e.target.value)}
-          >
-            {DIRECTIONS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="field-block">
+          <span className="field-label">方向 <b className="req">*</b></span>
+          <div className="seg" role="radiogroup" aria-label="方向">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={form.direction === 'up'}
+              className={form.direction === 'up' ? 'on active' : ''}
+              onClick={() => handleDirection('up')}
+            >
+              ↑ 上行 (桩号递增)
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={form.direction === 'down'}
+              className={form.direction === 'down' ? 'on active' : ''}
+              onClick={() => handleDirection('down')}
+            >
+              ↓ 下行 (桩号递减)
+            </button>
+          </div>
+        </div>
 
         <label>
           施工内容

@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getZone, updateZone } from '../api'
 import AppHeader from '../components/AppHeader'
-import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { useUnsavedGuard } from '../useUnsavedGuard'
-import { focusFirstIssue, ZONE_ERROR_ORDER } from '../focus'
-import { defaults, parseZoneParams, parseStake, stake } from '../zone/utils'
+import { defaults, parseZoneParams } from '../zone/utils'
 import { validateZone } from '../zone/validation'
-
+import { RoadWorkbench } from '../zone/3d/RoadWorkbench'
 export default function ZoneEditPage({ id }: { id: string }) {
 
   const [zone, setZone] = useState<ZoneParams>({ ...defaults, start: '' })
@@ -19,7 +17,6 @@ export default function ZoneEditPage({ id }: { id: string }) {
   const snapshot = JSON.stringify(zone)
   const dirty = !loading && baseline !== null && snapshot !== baseline
   const allowLeave = useUnsavedGuard(dirty)
-  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     if (loading || baseline !== null) return
@@ -31,35 +28,26 @@ export default function ZoneEditPage({ id }: { id: string }) {
     getZone(id)
       .then((item) => {
         if (cancelled) return
-        setZone(parseZoneParams(item.zone_params) ?? { ...defaults, start: '' })
+        const parsed = parseZoneParams(item.zone_params)
+        setZone(parsed ?? { ...defaults, start: item.stake, work: item.length })
         setLoading(false)
       })
       .catch((reason) => {
-        if (cancelled) return
-        setError(reason instanceof Error ? reason.message : '布控区域加载失败')
-        setLoading(false)
+        if (!cancelled) {
+          setError(reason instanceof Error ? reason.message : '加载失败')
+          setLoading(false)
+        }
       })
     return () => {
       cancelled = true
     }
   }, [id])
 
-  const endStake = (() => {
-    const start = parseStake(zone.start)
-    return start != null && zone.work >= 10 ? stake(start + (zone.direction === 'down' ? -zone.work : zone.work)) : ''
-  })()
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setShowZoneErrors(true)
-    const zoneErrors = validateZone(zone)
-    if (Object.keys(zoneErrors).length > 0) {
-      const messages = [
-        zoneErrors.start ? `起始桩号：${zoneErrors.start}` : '',
-        zoneErrors.work ? `作业区长度：${zoneErrors.work}` : '',
-      ].filter(Boolean)
-      setError(messages.length ? `布置参数有误，请修正（红色提示处）：${messages.join('；')}` : '布置参数有误，请修正（红色提示处）')
-      requestAnimationFrame(() => focusFirstIssue(formRef.current, ZONE_ERROR_ORDER.filter((key) => zoneErrors[key])))
+  async function save() {
+    const errs = validateZone(zone)
+    if (Object.keys(errs).length > 0) {
+      setShowZoneErrors(true)
+      setError('布置参数有误，请修正')
       return
     }
     setSaving(true)
@@ -68,52 +56,32 @@ export default function ZoneEditPage({ id }: { id: string }) {
       await updateZone(id, { zone })
       allowLeave()
       window.location.hash = `#/zones/${id}`
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '保存失败')
       setSaving(false)
     }
   }
 
+  const trail = [{ label: '首页', href: '#/' }, { label: '布控区域', href: '#/zones' }, { label: '编辑' }]
+  if (loading) return <div className="app-frame"><AppHeader trail={trail} /><div className="page table-empty">正在加载布控配置…</div></div>
+
   return (
-    <div className="app-frame">
-      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '布控区域', href: '#/zones' }, { label: '编辑布控' }]} />
-      <div className="page">
-        <header className="topbar">
-          <a className="btn" href={`#/zones/${id}`}>
-            ← 返回
-          </a>
-          <h1>编辑布控区域</h1>
-          <span className="topbar-spacer" />
-        </header>
-
-        {loading ? <div className="table-empty">正在加载布控区域…</div> : null}
-
-        {!loading && (
-          <form ref={formRef} className="form" onSubmit={(e) => void submit(e)} onChange={() => setError('')} noValidate>
-            <h2 className="form-section-title">作业区布置</h2>
-            <div className="card form-card">
-              <div className="form-row">
-                <label className="readonly-stake">
-                  结束桩号
-                  <input readOnly value={endStake || '填写起始桩号与长度后自动计算'} />
-                </label>
-              </div>
-              <ZoneForm
-                value={zone}
-                onChange={(next) => next && setZone(next)}
-                allowDisable={false}
-                linked={false}
-                showErrors={showZoneErrors}
-                allowExport
-              />
-            </div>
-
-            {error ? <div className="notice error">{error}</div> : null}
-            <button type="submit" className="btn btn-primary btn-block" disabled={saving}>
-              {saving ? '保存中…' : '保存修改'}
-            </button>
-          </form>
-        )}
+    <div className="app-frame workbench-app-frame">
+      <AppHeader trail={trail} />
+      <div className="workbench-container">
+        <RoadWorkbench
+          params={zone}
+          onChange={(next) => {
+            setZone(next)
+            setError('')
+          }}
+          onSave={() => void save()}
+          saving={saving}
+          saveLabel="保存修改"
+          saveError={error}
+          showErrors={showZoneErrors}
+          backHref={`#/zones/${id}`}
+        />
       </div>
     </div>
   )

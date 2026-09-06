@@ -6,7 +6,6 @@ import AccountPage from './pages/AccountPage'
 import CalendarPage from './pages/CalendarPage'
 import DashboardPage from './pages/DashboardPage'
 import GuestHome from './pages/GuestHome'
-import HelpPage from './pages/HelpPage'
 import NotFoundPage from './pages/NotFoundPage'
 import LayoutPage from './pages/LayoutPage'
 import LayoutViewPage from './pages/LayoutViewPage'
@@ -43,7 +42,6 @@ function Router({ user }: { user: AuthUser | null }) {
   const [path, id, sub] = hash.replace(/^#\/?/, '').split('/')
 
   if (path === 'login') return user ? <DashboardPage /> : <LoginPage />
-  if (path === 'help') return <HelpPage />
   if (path === 'signs') return <SignsPage />
   if (path === 'layout' && id === 'view') return <LayoutViewPage />
   if (path === 'layout' || (path === 'zones' && id === 'new')) return <LayoutPage />

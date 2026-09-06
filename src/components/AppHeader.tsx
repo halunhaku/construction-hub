@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, CircleHelp, KeyRound, LogIn, LogOut, ShieldCheck, Signpost, User, Users } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, KeyRound, LogIn, LogOut, ShieldCheck, Signpost, User, Users } from 'lucide-react'
 import { listProjects, logout } from '../api'
 import { useAuth } from '../auth'
 import { safeReturnHash, setLoginIntent } from '../guestZone'
@@ -46,11 +46,12 @@ export default function AppHeader({
   const wrapRef = useRef<HTMLDivElement>(null)
   const userWrapRef = useRef<HTMLDivElement>(null)
 
+  const homeActive = !user && path === ''
   const projectActive = Boolean(user) && (path === '' || path === 'project' || path === 'record' || path === 'new')
-  const layoutActive = path === 'layout' || path === 'zones' || (!user && path === '')
+  const zonesActive = Boolean(user) && path === 'zones' && !hash.includes('/new')
+  const layoutActive = path === 'layout' || hash.includes('/new')
   const calendarActive = path === 'calendar'
   const signsActive = path === 'signs'
-  const helpActive = path === 'help'
   const usersActive = path === 'users'
   const crumbs = trail.filter((item) => item.label)
   const showCrumbs = crumbs.length > 1
@@ -106,22 +107,36 @@ export default function AppHeader({
       </a>
       <nav className="app-nav" aria-label="主导航">
         {user ? (
-          <a href="#/" className={projectActive ? 'active' : undefined} aria-current={projectActive ? 'page' : undefined}>
-            项目
-          </a>
-        ) : null}
-        <a
-          href={user ? '#/zones' : '#/layout'}
-          className={layoutActive ? 'active' : undefined}
-          aria-current={layoutActive ? 'page' : undefined}
-        >
-          布置
-        </a>
-        {user ? (
-          <a href="#/calendar" className={calendarActive ? 'active' : undefined} aria-current={calendarActive ? 'page' : undefined}>
-            日历
-          </a>
-        ) : null}
+          <>
+            <a href="#/" className={projectActive ? 'active' : undefined} aria-current={projectActive ? 'page' : undefined}>
+              项目台账
+            </a>
+            <a href="#/zones" className={zonesActive ? 'active' : undefined} aria-current={zonesActive ? 'page' : undefined}>
+              布控列表
+            </a>
+            <a href="#/layout" className={layoutActive ? 'active' : undefined} aria-current={layoutActive ? 'page' : undefined}>
+              3D 布置
+            </a>
+            <a href="#/calendar" className={calendarActive ? 'active' : undefined} aria-current={calendarActive ? 'page' : undefined}>
+              日历
+            </a>
+            <a href="#/signs" className={signsActive ? 'active' : undefined} aria-current={signsActive ? 'page' : undefined}>
+              标志牌
+            </a>
+          </>
+        ) : (
+          <>
+            <a href="#/" className={homeActive ? 'active' : undefined} aria-current={homeActive ? 'page' : undefined}>
+              首页
+            </a>
+            <a href="#/layout" className={layoutActive ? 'active' : undefined} aria-current={layoutActive ? 'page' : undefined}>
+              3D 布置
+            </a>
+            <a href="#/signs" className={signsActive ? 'active' : undefined} aria-current={signsActive ? 'page' : undefined}>
+              标志牌
+            </a>
+          </>
+        )}
       </nav>
       {showCrumbs ? (
         <nav className="breadcrumbs" aria-label="面包屑">
@@ -183,9 +198,6 @@ export default function AppHeader({
         ) : null}
         <a className={`icon-btn${signsActive ? ' active' : ''}`} href="#/signs" aria-label="标志牌" title="标志牌">
           <Signpost />
-        </a>
-        <a className={`icon-btn${helpActive ? ' active' : ''}`} href="#/help" aria-label="帮助" title="帮助">
-          <CircleHelp />
         </a>
         {user ? (
           <div className="user-menu-wrap" ref={userWrapRef}>

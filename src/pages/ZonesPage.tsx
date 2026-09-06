@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { CalendarClock, ChevronRight, Plus, Search, TrafficCone } from 'lucide-react'
 import { listZones } from '../api'
 import AppHeader from '../components/AppHeader'
-import QrPanel from '../components/QrPanel'
 import { directionLabel, type ZoneItem } from '../types'
 import { parseStake, stake } from '../zone/utils'
 import { formatTime } from '../util'
@@ -51,12 +50,6 @@ export default function ZonesPage() {
           </div>
         </section>
 
-        <QrPanel
-          hash="#/layout"
-          title="扫码出布置图"
-          subtitle="发给现场或群里。未登录可填参、预览、导出；登录后才能保存到本系统。"
-          filename="布置图入口二维码.png"
-        />
 
         {error ? <div className="notice error">{error}</div> : null}
 

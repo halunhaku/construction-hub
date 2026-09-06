@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Maximize2, Pencil, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import { ZoneDiagrams } from '../zone/RoadDiagram'
+import { Road3DViewer } from '../zone/3d/Road3DViewer'
 import { buildZones, mirrorZones, stake, zoneExtent } from '../zone/utils'
 import { signSchedule, signScheduleDouble } from '../zone/export'
 import type { ZoneParams } from '../types'
@@ -14,6 +15,7 @@ export default function ZoneCard({
   workspace = false,
   clearLabel = '清除',
   hideClear = false,
+  hideEdit = false,
 }: {
   params: ZoneParams
   onEdit?: () => void
@@ -23,9 +25,11 @@ export default function ZoneCard({
   /** 清除按钮文案：记录语境默认「清除」，独立布控区域传「删除布控」 */
   clearLabel?: string
   hideClear?: boolean
+  hideEdit?: boolean
 }) {
   const diagramRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
+  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d')
   const zones = useMemo(() => buildZones(params), [params])
   const total = useMemo(() => zones.reduce((s, z) => s + z.length, 0), [zones])
   // 双侧占路：镜像对向车道分区（与主方向桩号范围重合的作业区、180° 对称）
@@ -63,11 +67,31 @@ export default function ZoneCard({
           <p className="zone-meta">{meta}</p>
         </div>
         <div className="zone-head-actions">
-          {editHref ? (
+          <div className="seg" role="radiogroup" aria-label="展示模式">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === '3d'}
+              className={viewMode === '3d' ? 'on active' : ''}
+              onClick={() => setViewMode('3d')}
+            >
+              3D 孪生
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === '2d'}
+              className={viewMode === '2d' ? 'on active' : ''}
+              onClick={() => setViewMode('2d')}
+            >
+              2D 规程
+            </button>
+          </div>
+          {!hideEdit && editHref ? (
             <a className="btn" href={editHref}>
               <Pencil /> 编辑
             </a>
-          ) : onEdit ? (
+          ) : !hideEdit && onEdit ? (
             <button type="button" className="btn" onClick={onEdit}>
               <Pencil /> 编辑
             </button>
@@ -81,7 +105,14 @@ export default function ZoneCard({
       </div>
 
       <div className="zone-card-body">
-        <div ref={diagramRef} className="diagram-stage zone-stage-vertical">
+        <div style={{ display: viewMode === '3d' ? 'block' : 'none', marginBottom: 16 }}>
+          <Road3DViewer params={params} height={workspace ? 620 : 480} />
+        </div>
+        <div
+          ref={diagramRef}
+          className="diagram-stage zone-stage-vertical"
+          style={{ display: viewMode === '2d' ? 'block' : 'none' }}
+        >
           {workspace ? (
             <div className="diagram-tools" aria-label="图纸缩放">
               <button type="button" aria-label="放大" onClick={() => setZoom((value) => Math.min(1.5, value + .1))}><ZoomIn /></button>
@@ -100,7 +131,6 @@ export default function ZoneCard({
             vertical
           />
         </div>
-
         {!workspace ? <div className="zone-tables">
           <div className="zone-table">
             <h3>各区域起止点</h3>

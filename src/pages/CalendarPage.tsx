@@ -94,7 +94,7 @@ export default function CalendarPage() {
           <span className="topbar-spacer" />
         </header>
 
-        <div className="calendar-card">
+        <div className="card calendar-card">
           <div className="calendar-head">
             <button className="icon-btn calendar-nav" aria-label="上个月" onClick={() => shiftMonth(-1)}>
               <ChevronLeft />
@@ -139,18 +139,17 @@ export default function CalendarPage() {
           </div>
 
           <div className="calendar-legend">
-            <span><i className="calendar-dot" />有施工记录</span>
-            <span><i className="calendar-dot done" />资料完整</span>
-            <span><i className="calendar-today-mark" />今天</span>
+            <span><i className="calendar-dot" /> 有施工记录</span>
+            <span><i className="calendar-dot done" /> 资料完整</span>
+            <span><i className="calendar-today-mark" /> 今天</span>
           </div>
         </div>
 
         <section className="calendar-day-section">
-          <h3>
+          <h2 className="form-section-title">
             {selected.slice(5)} 的施工记录
-            {selectedStat ? <small>（{selectedStat.total} 条，{selectedStat.complete} 条资料完整）</small> : null}
-          </h3>
-
+            {selectedStat ? <small style={{ marginLeft: 6, fontWeight: 400 }}>（共 {selectedStat.total} 条，{selectedStat.complete} 条资料完整）</small> : null}
+          </h2>
           {loadingDay ? (
             <p className="calendar-empty">加载中…</p>
           ) : records.length === 0 ? (

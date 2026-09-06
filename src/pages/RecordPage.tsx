@@ -374,8 +374,8 @@ export default function RecordPage({ id }: { id: string }) {
                     <strong>{item.stake} {directionLabel(item.direction)}</strong>
                     <i className={itemStatus.className}>{itemStatus.label}</i>
                   </span>
-                  <span>{item.content || item.work_location || '未填写施工内容'}</span>
-                  <small>{item.work_date}</small>
+                  <span className="sidebar-record-content">{item.content || item.work_location || '未填写施工内容'}</span>
+                  <small className="sidebar-record-date">{item.work_date}</small>
                 </a>
               )
             })}
@@ -409,7 +409,7 @@ export default function RecordPage({ id }: { id: string }) {
           {flash ? <div className="flash" role="status" aria-live="polite">{flash}</div> : null}
 
           {zoneParams ? (
-            <ZoneCard params={zoneParams} editHref={`#/record/${id}/zone`} onClear={clearZone} workspace />
+            <ZoneCard params={zoneParams} workspace hideClear hideEdit />
           ) : (
             <section className="drawing-empty">
               <MapPin />

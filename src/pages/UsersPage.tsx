@@ -112,23 +112,31 @@ export default function UsersPage() {
               </label>
             </div>
           </div>
-          {error ? <div className="notice error">{error}</div> : null}
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? '添加中…' : '添加'}
-          </button>
+          {error ? <div className="notice error" style={{ marginTop: 10 }}>{error}</div> : null}
+          <div style={{ marginTop: 14, marginBottom: 32 }}>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? '添加中…' : '添加账号'}
+            </button>
+          </div>
         </form>
 
         {loading ? <div className="table-empty">正在加载账号…</div> : null}
 
         {!loading ? (
-          <section className="zone-list" aria-label="账号列表">
+          <section aria-label="账号列表">
+            <h2 className="form-section-title">已开通账号（{items.length}）</h2>
+            <div className="zone-list">
             {items.map((item) => (
               <div key={item.id} className="zone-list-item user-row">
                 <span className="zone-list-main">
-                  <strong>{item.username}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <strong>{item.username}</strong>
+                    <span className={`status-chip ${item.is_admin ? 'progress' : ''}`} style={{ fontSize: 10, padding: '2px 7px' }}>
+                      {item.is_admin ? '管理员' : '普通账号'}
+                    </span>
+                  </div>
                   <span className="zone-list-range">
-                    {item.is_admin ? '管理员' : '普通账号'}
-                    {item.created_at ? ` · ${formatTime(item.created_at)}` : ''}
+                    创建于 {item.created_at ? formatTime(item.created_at) : '—'}
                   </span>
                 </span>
                 {resetId === item.id ? (
@@ -175,6 +183,7 @@ export default function UsersPage() {
                 )}
               </div>
             ))}
+            </div>
           </section>
         ) : null}
       </main>
