@@ -84,7 +84,7 @@ export default function CalendarPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '施工日历' }]} />
+      <AppHeader trail={[{ label: '首页', href: '/' }, { label: '施工日历' }]} />
       <div className="page">
 
         <div className="card calendar-card">
@@ -152,7 +152,7 @@ export default function CalendarPage() {
               {records.map((r) => {
                 const status = recordStatus(r.photo_counts, r.zone_params)
                 return (
-                  <a key={r.id} className="calendar-day-item" href={`#/record/${r.id}`}>
+                  <a key={r.id} className="calendar-day-item" href={`/record/${r.id}`}>
                     <div className="calendar-day-item-main">
                       <strong>{r.stake}</strong>
                       <span>{directionLabel(r.direction)}</span>

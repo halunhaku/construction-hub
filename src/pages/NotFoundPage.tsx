@@ -8,7 +8,7 @@ export default function NotFoundPage() {
         <div className="dashboard-empty">
           <strong>没有这个页面</strong>
           <span>地址可能打错了，或这一页已经挪走。</span>
-          <a className="btn btn-primary" href="#/">
+          <a className="btn btn-primary" href="/">
             回到首页
           </a>
         </div>

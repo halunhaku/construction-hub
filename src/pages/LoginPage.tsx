@@ -1,18 +1,15 @@
 import { useRef, useState } from 'react'
-import { createZone, login } from '../api'
+import { login } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
 import {
-  clearGuestZone,
   consumeLoginIntent,
-  loadGuestZone,
   isPublicHash,
   peekLoginIntent,
   safeReturnHash,
-  setGuestSaveError,
 } from '../guestZone'
-import { validateZone } from '../zone/validation'
 import { focusFirstIssue } from '../focus'
+import { navigate } from '../route.ts'
 
 export default function LoginPage() {
   const { setUser } = useAuth()
@@ -22,7 +19,8 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const intended = safeReturnHash(peekLoginIntent()?.returnHash)
-  const backHash = isPublicHash(intended) ? intended : '#/'
+  const backHash = isPublicHash(intended) ? intended : '/'
+
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -42,29 +40,13 @@ export default function LoginPage() {
       const result = await login(username.trim(), password)
       setUser(result.user)
       const intent = consumeLoginIntent()
-      if (intent?.save) {
-        const zone = loadGuestZone()
-        if (!zone || Object.keys(validateZone(zone)).length > 0) {
-          window.location.hash = '#/layout'
-          return
-        }
-        try {
-          const created = await createZone({ zone })
-          clearGuestZone()
-          window.location.hash = `#/zones/${created.id}`
-          return
-        } catch (reason) {
-          setGuestSaveError(reason instanceof Error ? reason.message : '保存失败')
-          window.location.hash = '#/layout'
-          return
-        }
-      }
-      window.location.hash = safeReturnHash(intent?.returnHash)
+      navigate(safeReturnHash(intent?.returnHash))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '登录失败')
       setBusy(false)
       requestAnimationFrame(() => focusFirstIssue(formRef.current, ['password']))
     }
+
   }
 
   return (

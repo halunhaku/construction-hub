@@ -15,6 +15,8 @@ import ExcelImportButton from '../components/ExcelImportButton'
 import PhaseCard, { type PendingItem } from '../components/PhaseCard'
 import ZoneCard from '../components/ZoneCard'
 import { compressImage, photoTakenAtUtc, watermarkImage } from '../image'
+import { navigate } from '../route.ts'
+
 import { buildExportPages, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../zone/export'
 import { buildZones, mirrorZones, parseZoneParams, stake, zoneExtent } from '../zone/utils'
 import {
@@ -316,7 +318,8 @@ export default function RecordPage({ id }: { id: string }) {
     const projectName = record.project_name
     try {
       await deleteRecord(id)
-      window.location.hash = projectName ? `#/project/${encodeURIComponent(projectName)}` : '#/'
+      navigate(projectName ? `/project/${encodeURIComponent(projectName)}` : '/')
+
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '删除失败')
     }
@@ -333,7 +336,7 @@ export default function RecordPage({ id }: { id: string }) {
   }
 
   if (!record) {
-    return <div className="app-frame"><AppHeader trail={[{ label: '首页', href: '#/' }, { label: '记录详情' }]} /><div className="page-loading">{error || '正在加载记录…'}</div></div>
+    return <div className="app-frame"><AppHeader trail={[{ label: '首页', href: '/' }, { label: '记录详情' }]} /><div className="page-loading">{error || '正在加载记录…'}</div></div>
   }
 
   const status = recordState(record)
@@ -343,8 +346,8 @@ export default function RecordPage({ id }: { id: string }) {
     <div className="app-frame detail-frame">
       <AppHeader
         trail={[
-          { label: '首页', href: '#/' },
-          { label: record.project_name, href: `#/project/${encodeURIComponent(record.project_name)}` },
+          { label: '首页', href: '/' },
+          { label: record.project_name, href: `/project/${encodeURIComponent(record.project_name)}` },
           { label: '记录详情' },
         ]}
         project={`${record.project_name} · ${record.section}`}
@@ -367,7 +370,7 @@ export default function RecordPage({ id }: { id: string }) {
                 <a
                   className={`sidebar-record${item.id === id ? ' active' : ''}`}
                   key={item.id}
-                  href={`#/record/${item.id}`}
+                  href={`/record/${item.id}`}
                   aria-current={item.id === id ? 'page' : undefined}
                 >
                   <span className="sidebar-record-title">
@@ -392,10 +395,10 @@ export default function RecordPage({ id }: { id: string }) {
               <button className="btn btn-secondary" onClick={() => void downloadAll()} disabled={downloading}>
                 <Download /> {downloading ? '打包中…' : '导出档案'}
               </button>
-              <a className="btn" href={`#/record/${id}/edit`}>
+              <a className="btn" href={`/record/${id}/edit`}>
                 <Pencil /> 编辑
               </a>
-              <a className="btn btn-primary" href={`#/record/${id}/zone`}>
+              <a className="btn btn-primary" href={`/record/${id}/zone`}>
                 <Edit3 /> {zoneParams ? '编辑布置' : '创建布置'}
               </a>
               {zoneParams ? (
@@ -415,7 +418,7 @@ export default function RecordPage({ id }: { id: string }) {
               <MapPin />
               <h2>还没有作业区布置图</h2>
               <p>有起始和结束桩号的导入会自动出图。其余请在这里按桩号生成分区、标志牌与锥桶布置。</p>
-              <a className="btn btn-primary" href={`#/record/${id}/zone`}>
+              <a className="btn btn-primary" href={`/record/${id}/zone`}>
                 <Edit3 /> 创建布置
               </a>
             </section>

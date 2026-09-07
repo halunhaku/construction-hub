@@ -1,4 +1,5 @@
 import type { ZoneParams } from './types'
+import { currentPath, navigate, normalizePath } from './route.ts'
 import { parseZoneParams } from './zone/utils.ts'
 
 const ZONE_KEY = 'guest-zone-params-v1'
@@ -52,10 +53,7 @@ export function peekLoginIntent(): LoginIntent | null {
     const raw = sessionStorage.getItem(INTENT_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { returnHash?: unknown; save?: unknown }
-    const returnHash =
-      typeof parsed.returnHash === 'string' && parsed.returnHash.startsWith('#')
-        ? parsed.returnHash
-        : '#/'
+    const returnHash = typeof parsed.returnHash === 'string' ? safeReturnHash(parsed.returnHash) : '/'
     return { returnHash, save: parsed.save === true }
   } catch {
     return null
@@ -74,11 +72,12 @@ export function consumeLoginIntent(): LoginIntent | null {
 
 /** 进入登录页，并记住回来的地址；`save` 表示登录成功后自动保存本机布置图。 */
 export function goToLogin(opts?: { save?: boolean }) {
-  const hash = window.location.hash || '#/'
-  if (hash.startsWith('#/login')) return
-  setLoginIntent({ returnHash: safeReturnHash(hash), save: opts?.save === true })
-  window.location.hash = '#/login'
+  const here = currentPath()
+  if (here === '/login' || here.startsWith('/login/')) return
+  setLoginIntent({ returnHash: safeReturnHash(here), save: opts?.save === true })
+  navigate('/login')
 }
+
 
 export function setGuestSaveError(message: string) {
   try {
@@ -97,14 +96,16 @@ export function readGuestSaveError(): string {
   }
 }
 
-/** 登录成功后只允许回到本应用的 hash 页，避免停在登录页。 */
+/** 登录成功后只允许回到本应用的页面，避免停在登录页。 */
 export function safeReturnHash(returnHash: string | undefined): string {
-  if (!returnHash || !returnHash.startsWith('#') || returnHash.startsWith('#/login')) return '#/'
-  return returnHash
+  const path = normalizePath(returnHash)
+  if (path === '/login' || path.startsWith('/login/')) return '/'
+  return path
 }
 
 /** 未登录也能打开的页：取消登录时应回到这些页，而不是受保护地址造成来回跳。 */
 export function isPublicHash(hash: string): boolean {
-  const [path, id] = hash.replace(/^#\/?/, '').split('/')
-  return !path || path === 'layout' || path === 'help' || path === 'signs' || (path === 'zones' && id === 'new')
+  const [path] = normalizePath(hash).replace(/^\//, '').split('/')
+  return !path || path === 'layout' || path === 'help' || path === 'signs'
 }
+

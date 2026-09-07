@@ -4,6 +4,7 @@ import { changeOwnPassword, logout } from '../api'
 import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
 import { focusFirstIssue } from '../focus'
+import { navigate } from '../route.ts'
 
 export default function AccountPage() {
   const { user, setUser } = useAuth()
@@ -54,12 +55,13 @@ export default function AccountPage() {
       /* 即使接口失败也清掉本地登录态 */
     }
     setUser(null)
-    window.location.hash = '#/'
+    navigate('/')
+
   }
 
   return (
     <div className="app-frame">
-      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '我的' }]} />
+      <AppHeader trail={[{ label: '首页', href: '/' }, { label: '我的' }]} />
       <main className="page account-page">
         <section className="account-hero card">
           <span className="account-avatar" aria-hidden="true">
@@ -75,12 +77,12 @@ export default function AccountPage() {
 
         <nav className="account-links" aria-label="账号快捷入口">
           {user?.is_admin ? (
-            <a className="account-link" href="#/users">
+            <a className="account-link" href="/users">
               <Users aria-hidden="true" />
               账号管理
             </a>
           ) : null}
-          <a className="account-link" href="#/signs">
+          <a className="account-link" href="/signs">
             <Signpost aria-hidden="true" />
             标志牌库
           </a>

@@ -14,20 +14,14 @@ import LoginPage from './pages/LoginPage'
 import NewRecordPage from './pages/NewRecordPage'
 import RecordPage from './pages/RecordPage'
 import SignsPage from './pages/SignsPage'
-import ZoneDetailPage from './pages/ZoneDetailPage'
-import ZoneEditPage from './pages/ZoneEditPage'
 import ZoneEditorPage from './pages/ZoneEditorPage'
 import UsersPage from './pages/UsersPage'
-import ZonesPage from './pages/ZonesPage'
+import { currentPath, subscribeRoute } from './route.ts'
 
-function useHashRoute() {
-  const [hash, setHash] = useState(window.location.hash)
-  useEffect(() => {
-    const onChange = () => setHash(window.location.hash)
-    window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
-  }, [])
-  return hash
+function useRoutePath() {
+  const [path, setPath] = useState(currentPath)
+  useEffect(() => subscribeRoute(() => setPath(currentPath())), [])
+  return path
 }
 
 function LoginRedirect() {
@@ -38,15 +32,13 @@ function LoginRedirect() {
 }
 
 function Router({ user }: { user: AuthUser | null }) {
-  const hash = useHashRoute()
-  const [path, id, sub] = hash.replace(/^#\/?/, '').split('/')
+  const route = useRoutePath()
+  const [path, id, sub] = route.replace(/^\//, '').split('/')
 
   if (path === 'login') return user ? <DashboardPage /> : <LoginPage />
   if (path === 'signs') return <SignsPage />
   if (path === 'layout' && id === 'view') return <LayoutViewPage />
-  if (path === 'layout') return <LayoutPage standalone />
-  if (path === 'zones' && id === 'new') return <LayoutPage />
-
+  if (path === 'layout') return <LayoutPage />
 
   const known =
     !path ||
@@ -55,11 +47,11 @@ function Router({ user }: { user: AuthUser | null }) {
     path === 'new' ||
     path === 'project' ||
     path === 'record' ||
-    path === 'zones' ||
     path === 'users'
   if (path && !known) return <NotFoundPage />
 
   if (!user) return path ? <LoginRedirect /> : <GuestHome />
+
 
   if (path === 'account') return <AccountPage />
   if (path === 'calendar') return <CalendarPage />
@@ -72,9 +64,6 @@ function Router({ user }: { user: AuthUser | null }) {
     return <NewRecordPage key={id} id={decodeURIComponent(id)} />
   }
   if (path === 'record' && id) return <RecordPage id={decodeURIComponent(id)} />
-  if (path === 'zones' && id && sub === 'edit') return <ZoneEditPage key={id} id={decodeURIComponent(id)} />
-  if (path === 'zones' && id) return <ZoneDetailPage id={decodeURIComponent(id)} />
-  if (path === 'zones') return <ZonesPage />
   if (path === 'users') return user.is_admin ? <UsersPage /> : <DashboardPage />
   if (!path) return <DashboardPage />
   return <NotFoundPage />

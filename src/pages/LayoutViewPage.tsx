@@ -4,6 +4,7 @@ import { useAuth } from '../auth'
 import AppHeader from '../components/AppHeader'
 import ZoneCard from '../components/ZoneCard'
 import { clearGuestZone, goToLogin, loadGuestZone } from '../guestZone'
+import { navigate } from '../route.ts'
 import { parseStake, stake } from '../zone/utils'
 
 export default function LayoutViewPage() {
@@ -31,13 +32,14 @@ export default function LayoutViewPage() {
     setSaving(true)
     setError('')
     try {
-      const result = await createZone({ zone: params })
+      await createZone({ zone: params })
       clearGuestZone()
-      window.location.hash = `#/zones/${result.id}`
+      navigate('/layout')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '保存失败')
       setSaving(false)
     }
+
   }
 
   if (!params) {
@@ -46,7 +48,7 @@ export default function LayoutViewPage() {
         <AppHeader trail={[{ label: '布置图' }]} />
         <div className="page">
           <div className="table-empty">还没有布置图，请先填写参数。</div>
-          <a className="btn btn-primary" href="#/layout">
+          <a className="btn btn-primary" href="/layout">
             去填写
           </a>
         </div>
@@ -56,10 +58,10 @@ export default function LayoutViewPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={[{ label: '布置图', href: '#/layout' }, { label: '预览' }]} />
+      <AppHeader trail={[{ label: '布置图', href: '/layout' }, { label: '预览' }]} />
       <div className="page">
         <header className="topbar">
-          <a className="btn" href="#/layout">
+          <a className="btn" href="/layout">
             ← 修改参数
           </a>
           <h1>布置图</h1>
@@ -83,7 +85,7 @@ export default function LayoutViewPage() {
 
         <ZoneCard
           params={params}
-          editHref="#/layout"
+          editHref="/layout"
           hideClear
         />
 

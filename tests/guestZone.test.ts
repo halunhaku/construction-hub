@@ -6,30 +6,33 @@ import { isValidWorkDate } from '../src/util.ts'
 
 describe('登录回跳地址', () => {
   it('缺省或仍在登录页时回到首页', () => {
-    assert.equal(safeReturnHash(undefined), '#/')
-    assert.equal(safeReturnHash(''), '#/')
-    assert.equal(safeReturnHash('#/login'), '#/')
-    assert.equal(safeReturnHash('#/login?x=1'), '#/')
+    assert.equal(safeReturnHash(undefined), '/')
+    assert.equal(safeReturnHash(''), '/')
+    assert.equal(safeReturnHash('/login'), '/')
+    assert.equal(safeReturnHash('#/login'), '/')
+    assert.equal(safeReturnHash('#/login?x=1'), '/')
   })
 
-  it('只接受本应用 hash', () => {
-    assert.equal(safeReturnHash('#/layout'), '#/layout')
-    assert.equal(safeReturnHash('#/layout/view'), '#/layout/view')
-    assert.equal(safeReturnHash('#/help'), '#/help')
-    assert.equal(safeReturnHash('https://evil.example/'), '#/')
-    assert.equal(safeReturnHash('/layout'), '#/')
+  it('只接受本应用路径，兼容旧 hash', () => {
+    assert.equal(safeReturnHash('/layout'), '/layout')
+    assert.equal(safeReturnHash('#/layout'), '/layout')
+    assert.equal(safeReturnHash('#/layout/view'), '/layout/view')
+    assert.equal(safeReturnHash('#/help'), '/help')
+    assert.equal(safeReturnHash('https://evil.example/'), '/')
+    assert.equal(safeReturnHash('layout'), '/')
   })
 
   it('区分公开页与需登录页', () => {
+    assert.equal(isPublicHash('/'), true)
     assert.equal(isPublicHash('#/'), true)
+    assert.equal(isPublicHash('/layout'), true)
     assert.equal(isPublicHash('#/layout'), true)
-    assert.equal(isPublicHash('#/layout/view'), true)
-    assert.equal(isPublicHash('#/help'), true)
-    assert.equal(isPublicHash('#/signs'), true)
-    assert.equal(isPublicHash('#/zones/new'), true)
-    assert.equal(isPublicHash('#/calendar'), false)
-    assert.equal(isPublicHash('#/record/abc'), false)
-    assert.equal(isPublicHash('#/zones'), false)
+    assert.equal(isPublicHash('/layout/view'), true)
+    assert.equal(isPublicHash('/help'), true)
+    assert.equal(isPublicHash('/signs'), true)
+    assert.equal(isPublicHash('/calendar'), false)
+    assert.equal(isPublicHash('/record/abc'), false)
+    assert.equal(isPublicHash('/zones'), false)
   })
 })
 

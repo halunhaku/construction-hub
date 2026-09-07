@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { currentPath, navigate } from './route.ts'
 
 const MESSAGE = '有未保存的修改，确定离开？'
 
@@ -24,14 +25,19 @@ export function useUnsavedGuard(dirty: boolean) {
   }, [])
 
   useEffect(() => {
-    const origin = window.location.hash || '#/'
+    const origin = currentPath()
     function onClick(event: MouseEvent) {
       if (!dirtyRef.current || allowRef.current) return
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      const link = (event.target as Element | null)?.closest?.('a[href^="#"]')
+      const link = (event.target as Element | null)?.closest?.('a[href]')
       if (!(link instanceof HTMLAnchorElement)) return
-      const href = link.getAttribute('href') || ''
-      if (!href.startsWith('#') || href === origin) return
+      if (link.target && link.target !== '_self') return
+      if (link.hasAttribute('download')) return
+      const href = link.getAttribute('href')
+      if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return
+      const url = new URL(link.href, window.location.origin)
+      if (url.origin !== window.location.origin) return
+      if (url.pathname === origin) return
       if (!window.confirm(MESSAGE)) {
         event.preventDefault()
         event.stopPropagation()
@@ -39,24 +45,24 @@ export function useUnsavedGuard(dirty: boolean) {
         allowRef.current = true
       }
     }
-    function onHashChange() {
+    function onPopState() {
       if (allowRef.current) {
         allowRef.current = false
         return
       }
       if (!dirtyRef.current) return
-      const next = window.location.hash || '#/'
+      const next = currentPath()
       if (next === origin) return
       if (!window.confirm(MESSAGE)) {
         allowRef.current = true
-        window.location.hash = origin
+        navigate(origin)
       }
     }
     document.addEventListener('click', onClick, true)
-    window.addEventListener('hashchange', onHashChange)
+    window.addEventListener('popstate', onPopState)
     return () => {
       document.removeEventListener('click', onClick, true)
-      window.removeEventListener('hashchange', onHashChange)
+      window.removeEventListener('popstate', onPopState)
     }
   }, [])
 

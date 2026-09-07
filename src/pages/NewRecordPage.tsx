@@ -4,6 +4,7 @@ import AppHeader from '../components/AppHeader'
 import ZoneForm from '../components/ZoneForm'
 import type { ZoneParams } from '../types'
 import { focusFirstIssue, ZONE_ERROR_ORDER } from '../focus'
+import { navigate } from '../route.ts'
 import { useUnsavedGuard } from '../useUnsavedGuard'
 import { isValidWorkDate, today } from '../util'
 import { validateZone } from '../zone/validation'
@@ -183,11 +184,11 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
       if (editing && id) {
         await updateRecord(id, data)
         allowLeave()
-        window.location.hash = `#/record/${id}`
+        navigate(`/record/${id}`)
       } else {
         const { id: newId } = await createRecord(data)
         allowLeave()
-        window.location.hash = `#/record/${newId}`
+        navigate(`/record/${newId}`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败')
@@ -198,7 +199,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
   if (loading) {
     return (
       <div className="app-frame">
-        <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '编辑记录' }]} />
+        <AppHeader trail={[{ label: '首页', href: '/' }, { label: '编辑记录' }]} />
         <div className="page-loading">正在加载记录…</div>
       </div>
     )
@@ -210,27 +211,28 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         trail={
           editing && id
             ? [
-                { label: '首页', href: '#/' },
-                { label: '记录详情', href: `#/record/${id}` },
+                { label: '首页', href: '/' },
+                { label: '记录详情', href: `/record/${id}` },
                 { label: '编辑记录' },
               ]
             : project
               ? [
-                  { label: '首页', href: '#/' },
-                  { label: project, href: `#/project/${encodeURIComponent(project)}` },
+                  { label: '首页', href: '/' },
+                  { label: project, href: `/project/${encodeURIComponent(project)}` },
                   { label: '新建记录' },
                 ]
-              : [{ label: '首页', href: '#/' }, { label: '新建记录' }]
+              : [{ label: '首页', href: '/' }, { label: '新建记录' }]
         }
       />
       <div className="page">
       <header className="topbar">
-        <a className="btn" href={editing && id ? `#/record/${id}` : project ? `#/project/${encodeURIComponent(project)}` : '#/'}>
+        <a className="btn" href={editing && id ? `/record/${id}` : project ? `/project/${encodeURIComponent(project)}` : '/'}>
           ← 返回
         </a>
         <h1>{editing ? '编辑施工记录' : '新建施工记录'}</h1>
         <span className="topbar-spacer" />
       </header>
+
 
       <form ref={formRef} className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
         <h2 className="form-section-title">基本信息</h2>

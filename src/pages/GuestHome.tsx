@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarDays, FileDown, Layers, LogIn, ShieldCheck, Signpost, Sparkles, TrafficCone } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { safeReturnHash, setLoginIntent } from '../guestZone'
+import { currentPath } from '../route.ts'
 
 export default function GuestHome() {
   return (
@@ -18,19 +19,19 @@ export default function GuestHome() {
             免登录即可即时体验 3D 空间布控与图纸生成。
           </p>
           <div className="guest-hero-actions">
-            <a className="btn btn-primary guest-cta-btn" href="#/layout">
+            <a className="btn btn-primary guest-cta-btn" href="/layout">
               <TrafficCone />
               进入 3D 布置工作台
               <ArrowRight style={{ width: 14, height: 14 }} />
             </a>
-            <a className="btn btn-secondary" href="#/signs">
+            <a className="btn btn-secondary" href="/signs">
               <Signpost />
               标志牌矢量库
             </a>
             <a
               className="btn"
-              href="#/login"
-              onClick={() => setLoginIntent({ returnHash: safeReturnHash(window.location.hash || '#/'), save: false })}
+              href="/login"
+              onClick={() => setLoginIntent({ returnHash: safeReturnHash(currentPath()), save: false })}
             >
               <LogIn />
               台账系统登录
@@ -39,7 +40,7 @@ export default function GuestHome() {
         </section>
 
         <section className="guest-features">
-          <a className="card guest-feature-card" href="#/layout">
+          <a className="card guest-feature-card" href="/layout">
             <div className="guest-card-icon" style={{ background: 'rgba(0, 113, 227, 0.1)', color: 'var(--accent)' }}>
               <Layers />
             </div>
@@ -48,7 +49,7 @@ export default function GuestHome() {
             <span className="guest-card-link">进入工作台 →</span>
           </a>
 
-          <a className="card guest-feature-card" href="#/layout">
+          <a className="card guest-feature-card" href="/layout">
             <div className="guest-card-icon" style={{ background: 'rgba(52, 199, 89, 0.12)', color: 'var(--green)' }}>
               <FileDown />
             </div>
@@ -57,7 +58,7 @@ export default function GuestHome() {
             <span className="guest-card-link">预览图纸导出 →</span>
           </a>
 
-          <a className="card guest-feature-card" href="#/signs">
+          <a className="card guest-feature-card" href="/signs">
             <div className="guest-card-icon" style={{ background: 'rgba(245, 99, 0, 0.1)', color: 'var(--orange)' }}>
               <Signpost />
             </div>
@@ -68,8 +69,8 @@ export default function GuestHome() {
 
           <a
             className="card guest-feature-card"
-            href="#/login"
-            onClick={() => setLoginIntent({ returnHash: safeReturnHash('#/calendar'), save: false })}
+            href="/login"
+            onClick={() => setLoginIntent({ returnHash: safeReturnHash('/calendar'), save: false })}
           >
             <div className="guest-card-icon" style={{ background: 'rgba(175, 82, 222, 0.12)', color: '#af52de' }}>
               <CalendarDays />

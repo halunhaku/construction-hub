@@ -53,8 +53,8 @@ export default function ListPage({ project }: { project?: string }) {
     <div className="app-frame">
       <AppHeader
         trail={project
-          ? [{ label: '首页', href: '#/' }, { label: project }]
-          : [{ label: '首页', href: '#/' }, { label: '施工记录' }]}
+          ? [{ label: '首页', href: '/' }, { label: project }]
+          : [{ label: '首页', href: '/' }, { label: '施工记录' }]}
         project={project}
       />
       <main className="registry-page">
@@ -71,7 +71,7 @@ export default function ListPage({ project }: { project?: string }) {
                 void load(projectQuery)
               }}
             />
-            <a className="btn btn-primary" href={project ? `#/new/${encodeURIComponent(project)}` : '#/new'}>
+            <a className="btn btn-primary" href={project ? `/new/${encodeURIComponent(project)}` : '/new'}>
               <Plus />
               新建记录
             </a>
@@ -152,7 +152,7 @@ export default function ListPage({ project }: { project?: string }) {
               <a
                 className="registry-row"
                 key={record.id}
-                href={`#/record/${record.id}`}
+                href={`/record/${record.id}`}
               >
                 <span className="stake-cell">
                   <MapPin aria-hidden="true" />

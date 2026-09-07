@@ -119,7 +119,7 @@ export default function DashboardPage() {
             <p>选择项目后，进入施工位置清单与现场证据管理。</p>
           </div>
           <div className="heading-actions">
-            <a className="btn btn-primary" href="#/new">
+            <a className="btn btn-primary" href="/new">
               <Plus />
               新建记录
             </a>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
             <strong>最近访问</strong>
             <div>
               {recent.map((project) => (
-                <a key={project.name} href={`#/project/${encodeURIComponent(project.name)}`} onClick={() => remember(project.name)}>
+                <a key={project.name} href={`/project/${encodeURIComponent(project.name)}`} onClick={() => remember(project.name)}>
                   {project.name}
                 </a>
               ))}
@@ -167,7 +167,7 @@ export default function DashboardPage() {
               <a
                 className="project-card"
                 key={project.name}
-                href={`#/project/${encodeURIComponent(project.name)}`}
+                href={`/project/${encodeURIComponent(project.name)}`}
                 onClick={() => remember(project.name)}
               >
                 <span className="project-card-head">

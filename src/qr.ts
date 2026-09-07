@@ -3,11 +3,13 @@ import QRCode from 'qrcode'
 const QR_DARK = '#061b35'
 const QR_LIGHT = '#ffffff'
 
-/** 当前站点下某 hash 页的绝对地址（扫码、复制链接用）。 */
-export function appPageUrl(hash: string): string {
-  const path = hash.startsWith('#') ? hash : `#/${hash.replace(/^\/+/, '')}`
-  return `${window.location.origin}${window.location.pathname}${path}`
+/** 当前站点下某页的绝对地址（扫码、复制链接用）。 */
+export function appPageUrl(path: string): string {
+  const next = path.startsWith('#') ? path.slice(1) : path
+  const pathname = next.startsWith('/') ? next : `/${next.replace(/^\/+/, '')}`
+  return `${window.location.origin}${pathname}`
 }
+
 
 export function qrDataUrl(text: string, size = 512): Promise<string> {
   return QRCode.toDataURL(text, {

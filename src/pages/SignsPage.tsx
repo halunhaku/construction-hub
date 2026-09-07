@@ -57,7 +57,7 @@ export default function SignsPage() {
 
   return (
     <div className="app-frame">
-      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '标志牌库' }]} />
+      <AppHeader trail={[{ label: '首页', href: '/' }, { label: '标志牌库' }]} />
       <div className="page signs-page">
         <h1>养护安全标志牌库</h1>
 

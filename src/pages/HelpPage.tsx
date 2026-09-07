@@ -24,15 +24,15 @@ const STEPS: { title: string; steps: string[]; note?: string }[] = [
     note: '单次最多导入 1000 条记录；模板中的必填列（项目名称、高速公路、路段、桩号、施工日期）不能为空。同时有起始和结束桩号、且能通过当前模板校验时，会按默认布置参数自动出图；否则进记录详情点「创建布置」。',
   },
   {
-    title: '独立布控出图',
+    title: '3D 布置出图',
     steps: [
-      '未登录也可在顶部导航点「3D 布置」，填写桩号和长度后在 3D/2D 空间预览与导出图纸',
-      '点「查看布置图」或直接在 3D 工作台预览（不写入系统，关掉浏览器可能丢失）',
-      '未登录点「登录后保存」，登录成功后会自动写入并打开详情页；已登录则直接保存',
-      '项目台账、三阶段照片、已保存的布控列表仅登录可见',
+      '未登录也可在导航点「3D 布置」，填写桩号和长度后预览 3D/2D 并导出图纸',
+      '此页只出图，不写入项目台账',
+      '项目台账和三阶段照片需登录后，从项目总览新建记录再创建布置',
     ],
-    note: '公开布置图页无需登录即可预览和导出。已保存布控的详情需要登录。账号由管理员配置，不开放注册。',
+    note: '公开布置图页无需登录即可预览和导出。账号由管理员配置，不开放注册。',
   },
+
   {
     title: '作业区布置图',
     steps: [
@@ -91,10 +91,10 @@ const FAQS: { q: string; a: string }[] = [
 export default function HelpPage() {
   return (
     <div className="app-frame">
-      <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '帮助' }]} />
+      <AppHeader trail={[{ label: '首页', href: '/' }, { label: '帮助' }]} />
       <div className="page help-page">
         <header className="topbar">
-          <a className="btn" href="#/">
+          <a className="btn" href="/">
             ← 返回
           </a>
           <h1>帮助中心</h1>
