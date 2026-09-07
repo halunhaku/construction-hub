@@ -1,5 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, KeyRound, LogIn, LogOut, ShieldCheck, Signpost, User, Users } from 'lucide-react'
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Home,
+  KeyRound,
+  Layers,
+  LogIn,
+  LogOut,
+  Signpost,
+  TrafficCone,
+  User,
+  Users,
+} from 'lucide-react'
+
 import { listProjects, logout } from '../api'
 import { useAuth } from '../auth'
 import { safeReturnHash, setLoginIntent } from '../guestZone'
@@ -9,9 +24,9 @@ export type Crumb = { label: string; href?: string }
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash)
-    window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
+    const onHash = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [])
   return hash
 }
@@ -47,12 +62,18 @@ export default function AppHeader({
   const userWrapRef = useRef<HTMLDivElement>(null)
 
   const homeActive = !user && path === ''
-  const projectActive = Boolean(user) && (path === '' || path === 'project' || path === 'record' || path === 'new')
-  const zonesActive = Boolean(user) && path === 'zones' && !hash.includes('/new')
+  const projectActive = Boolean(user) && (path === '' || path === 'project' || path === 'record' || path === 'new') && !hash.includes('/zone')
+  const zonesActive = Boolean(user) && path === 'zones' && !hash.includes('/new') && !hash.includes('/edit')
   const layoutActive = path === 'layout' || hash.includes('/new')
+  const threeDActive =
+    path === 'layout' ||
+    (path === 'zones' && (hash.includes('/new') || hash.includes('/edit'))) ||
+    (path === 'record' && hash.includes('/zone'))
   const calendarActive = path === 'calendar'
   const signsActive = path === 'signs'
   const usersActive = path === 'users'
+  const accountActive = path === 'account'
+  const loginActive = path === 'login'
   const crumbs = trail.filter((item) => item.label)
   const showCrumbs = crumbs.length > 1
 
@@ -66,7 +87,6 @@ export default function AppHeader({
     window.location.hash = '#/'
   }
 
-  // 打开时拉取项目列表（每次刷新，保证新建项目立即可见）
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -80,7 +100,6 @@ export default function AppHeader({
     }
   }, [open])
 
-  // 点击外部或 Escape 关闭下拉
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
@@ -100,151 +119,202 @@ export default function AppHeader({
   }, [])
 
   return (
-    <header className="app-header">
-      <a className="app-brand" href="#/">
-        <ShieldCheck aria-hidden="true" />
-        <span>路安施工管理</span>
-      </a>
-      <nav className="app-nav" aria-label="主导航">
+    <>
+      <header className="app-header">
+        <a className="app-brand" href="#/">
+          <img className="app-brand-mark" src="/favicon.svg?v=3" alt="" width={25} height={25} />
+          <span className="app-brand-full">陌上</span>
+          <span className="app-brand-short">陌上</span>
+        </a>
+
+        <nav className="app-nav" aria-label="主导航">
+          {user ? (
+            <>
+              <a href="#/" className={projectActive ? 'active' : undefined} aria-current={projectActive ? 'page' : undefined}>
+                项目台账
+              </a>
+              <a href="#/zones" className={zonesActive ? 'active' : undefined} aria-current={zonesActive ? 'page' : undefined}>
+                布控列表
+              </a>
+              <a href="#/layout" className={layoutActive ? 'active' : undefined} aria-current={layoutActive ? 'page' : undefined}>
+                3D 布置
+              </a>
+              <a href="#/calendar" className={calendarActive ? 'active' : undefined} aria-current={calendarActive ? 'page' : undefined}>
+                日历
+              </a>
+              <a href="#/signs" className={signsActive ? 'active' : undefined} aria-current={signsActive ? 'page' : undefined}>
+                标志牌
+              </a>
+            </>
+          ) : (
+            <>
+              <a href="#/" className={homeActive ? 'active' : undefined} aria-current={homeActive ? 'page' : undefined}>
+                首页
+              </a>
+              <a href="#/layout" className={layoutActive ? 'active' : undefined} aria-current={layoutActive ? 'page' : undefined}>
+                3D 布置
+              </a>
+              <a href="#/signs" className={signsActive ? 'active' : undefined} aria-current={signsActive ? 'page' : undefined}>
+                标志牌
+              </a>
+            </>
+          )}
+        </nav>
+        {showCrumbs ? (
+          <nav className="breadcrumbs" aria-label="面包屑">
+            {crumbs.map((item, index) => {
+              const isLast = index === crumbs.length - 1
+              return (
+                <span key={`${item.label}-${index}`}>
+                  {index > 0 ? <ChevronRight aria-hidden="true" /> : null}
+                  {item.href && !isLast ? <a href={item.href}>{item.label}</a> : item.label}
+                </span>
+              )
+            })}
+          </nav>
+        ) : null}
+        <div className="app-header-tools">
+          {user && project ? (
+            <div className="project-switcher-wrap" ref={wrapRef}>
+              <button
+                className="project-switcher"
+                title={project}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                onClick={() => setOpen((o) => !o)}
+              >
+                <span className="project-switcher-label">项目：{project}</span>
+                <ChevronDown aria-hidden="true" />
+              </button>
+              {open && (
+                <div className="project-switcher-menu" role="listbox" aria-label="切换项目">
+                  {projects.length === 0 ? (
+                    <div className="project-switcher-empty">加载中…</div>
+                  ) : (
+                    projects.map((p) => (
+                      <a
+                        key={p.name}
+                        href={`#/project/${encodeURIComponent(p.name)}`}
+                        role="option"
+                        aria-selected={p.name === activeName}
+                        className={`project-switcher-item${p.name === activeName ? ' active' : ''}`}
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className="project-switcher-item-name">{p.name}</span>
+                        {p.name === activeName ? (
+                          <Check className="project-switcher-check" aria-hidden="true" />
+                        ) : (
+                          <span className="project-switcher-count">{p.count}</span>
+                        )}
+                      </a>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <div className="header-desktop-actions">
+            {user?.is_admin ? (
+              <a className={`icon-btn${usersActive ? ' active' : ''}`} href="#/users" aria-label="账号" title="账号">
+                <Users />
+              </a>
+            ) : null}
+            <a className={`icon-btn${signsActive ? ' active' : ''}`} href="#/signs" aria-label="标志牌" title="标志牌">
+              <Signpost />
+            </a>
+            {user ? (
+              <div className="user-menu-wrap" ref={userWrapRef}>
+                <button
+                  className="user-button"
+                  title={user.username}
+                  aria-label={user.username}
+                  aria-haspopup="menu"
+                  aria-expanded={userOpen}
+                  onClick={() => setUserOpen((value) => !value)}
+                >
+                  <User />
+                  <span>{user.username}</span>
+                </button>
+                {userOpen ? (
+                  <div className="user-menu" role="menu">
+                    <a
+                      href="#/account"
+                      role="menuitem"
+                      className="project-switcher-item"
+                      onClick={() => setUserOpen(false)}
+                    >
+                      <KeyRound aria-hidden="true" />
+                      修改密码
+                    </a>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="project-switcher-item"
+                      onClick={() => {
+                        setUserOpen(false)
+                        void handleLogout()
+                      }}
+                    >
+                      <LogOut aria-hidden="true" />
+                      退出
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <a className="user-button" href="#/login" aria-label="登录" onClick={rememberLoginReturn}>
+                <LogIn />
+                <span>登录</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
+      <nav className={`mobile-tabbar${user ? '' : ' mobile-tabbar-guest'}`} aria-label="移动导航">
         {user ? (
           <>
             <a href="#/" className={projectActive ? 'active' : undefined} aria-current={projectActive ? 'page' : undefined}>
-              项目台账
+              <Home aria-hidden="true" />
+              项目
             </a>
             <a href="#/zones" className={zonesActive ? 'active' : undefined} aria-current={zonesActive ? 'page' : undefined}>
-              布控列表
+              <TrafficCone aria-hidden="true" />
+              布控
             </a>
-            <a href="#/layout" className={layoutActive ? 'active' : undefined} aria-current={layoutActive ? 'page' : undefined}>
-              3D 布置
+            <a href="#/layout" className={threeDActive ? 'active' : undefined} aria-current={threeDActive ? 'page' : undefined}>
+              <Layers aria-hidden="true" />
+              3D
             </a>
             <a href="#/calendar" className={calendarActive ? 'active' : undefined} aria-current={calendarActive ? 'page' : undefined}>
+              <CalendarDays aria-hidden="true" />
               日历
             </a>
-            <a href="#/signs" className={signsActive ? 'active' : undefined} aria-current={signsActive ? 'page' : undefined}>
-              标志牌
+            <a href="#/account" className={accountActive ? 'active' : undefined} aria-current={accountActive ? 'page' : undefined}>
+              <User aria-hidden="true" />
+              我的
             </a>
           </>
         ) : (
           <>
             <a href="#/" className={homeActive ? 'active' : undefined} aria-current={homeActive ? 'page' : undefined}>
+              <Home aria-hidden="true" />
               首页
             </a>
-            <a href="#/layout" className={layoutActive ? 'active' : undefined} aria-current={layoutActive ? 'page' : undefined}>
-              3D 布置
+            <a href="#/layout" className={threeDActive ? 'active' : undefined} aria-current={threeDActive ? 'page' : undefined}>
+              <Layers aria-hidden="true" />
+              3D
             </a>
             <a href="#/signs" className={signsActive ? 'active' : undefined} aria-current={signsActive ? 'page' : undefined}>
-              标志牌
+              <Signpost aria-hidden="true" />
+              标志
+            </a>
+            <a href="#/login" className={loginActive ? 'active' : undefined} aria-current={loginActive ? 'page' : undefined} onClick={rememberLoginReturn}>
+              <LogIn aria-hidden="true" />
+              登录
             </a>
           </>
         )}
       </nav>
-      {showCrumbs ? (
-        <nav className="breadcrumbs" aria-label="面包屑">
-          {crumbs.map((item, index) => {
-            const isLast = index === crumbs.length - 1
-            return (
-              <span key={`${item.label}-${index}`}>
-                {index > 0 ? <ChevronRight aria-hidden="true" /> : null}
-                {item.href && !isLast ? <a href={item.href}>{item.label}</a> : item.label}
-              </span>
-            )
-          })}
-        </nav>
-      ) : null}
-      <div className="app-header-tools">
-        {user && project ? (
-          <div className="project-switcher-wrap" ref={wrapRef}>
-            <button
-              className="project-switcher"
-              title={project}
-              aria-haspopup="listbox"
-              aria-expanded={open}
-              onClick={() => setOpen((o) => !o)}
-            >
-              <span className="project-switcher-label">项目：{project}</span>
-              <ChevronDown aria-hidden="true" />
-            </button>
-            {open && (
-              <div className="project-switcher-menu" role="listbox" aria-label="切换项目">
-                {projects.length === 0 ? (
-                  <div className="project-switcher-empty">加载中…</div>
-                ) : (
-                  projects.map((p) => (
-                    <a
-                      key={p.name}
-                      href={`#/project/${encodeURIComponent(p.name)}`}
-                      role="option"
-                      aria-selected={p.name === activeName}
-                      className={`project-switcher-item${p.name === activeName ? ' active' : ''}`}
-                      onClick={() => setOpen(false)}
-                    >
-                      <span className="project-switcher-item-name">{p.name}</span>
-                      {p.name === activeName ? (
-                        <Check className="project-switcher-check" aria-hidden="true" />
-                      ) : (
-                        <span className="project-switcher-count">{p.count}</span>
-                      )}
-                    </a>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-        ) : null}
-        {user?.is_admin ? (
-          <a className={`icon-btn${usersActive ? ' active' : ''}`} href="#/users" aria-label="账号" title="账号">
-            <Users />
-          </a>
-        ) : null}
-        <a className={`icon-btn${signsActive ? ' active' : ''}`} href="#/signs" aria-label="标志牌" title="标志牌">
-          <Signpost />
-        </a>
-        {user ? (
-          <div className="user-menu-wrap" ref={userWrapRef}>
-            <button
-              className="user-button"
-              title={user.username}
-              aria-label={user.username}
-              aria-haspopup="menu"
-              aria-expanded={userOpen}
-              onClick={() => setUserOpen((value) => !value)}
-            >
-              <User />
-              <span>{user.username}</span>
-            </button>
-            {userOpen ? (
-              <div className="user-menu" role="menu">
-                <a
-                  href="#/account"
-                  role="menuitem"
-                  className="project-switcher-item"
-                  onClick={() => setUserOpen(false)}
-                >
-                  <KeyRound aria-hidden="true" />
-                  修改密码
-                </a>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="project-switcher-item"
-                  onClick={() => {
-                    setUserOpen(false)
-                    void handleLogout()
-                  }}
-                >
-                  <LogOut aria-hidden="true" />
-                  退出
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <a className="user-button" href="#/login" aria-label="登录" onClick={rememberLoginReturn}>
-            <LogIn />
-            <span>登录</span>
-          </a>
-        )}
-      </div>
-    </header>
+    </>
   )
 }

@@ -38,6 +38,9 @@ export function RoadWorkbench({
   const [toast, setToast] = useState<string | null>(null)
   const [sidebarFolded, setSidebarFolded] = useState(false)
   const [planFolded, setPlanFolded] = useState(false)
+
+
+
   const toastTimerRef = useRef<number | null>(null)
   const captureRef = useRef<CaptureFn | null>(null)
   const cameraRef = useRef<CameraApi | null>(null)
@@ -92,7 +95,7 @@ export function RoadWorkbench({
   }
 
   return (
-    <div className={`app-workbench ${sidebarFolded ? 'sidebar-collapsed' : ''}`} ref={appRef}>
+    <div className={`app-workbench${sidebarFolded ? ' sidebar-collapsed' : ''}`} ref={appRef}>
       <ParamPanel
         params={params}
         onChange={onChange}

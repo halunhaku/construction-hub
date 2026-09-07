@@ -1,6 +1,7 @@
 import { OrbitControls } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
-import { useEffect, useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
+
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { roadsideEyeX, roadsideLookX } from '../layout/cameraPath'
@@ -183,6 +184,13 @@ export function RoadScene({
   const fogFar = Math.max(3000, layout.totalLength * 5)
   const fogNear = 1800
   const bg = '#f0f2f5'
+  const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 720px)')
+    const onChange = () => setCompact(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   return (
     <Canvas
@@ -191,11 +199,12 @@ export function RoadScene({
       gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, logarithmicDepthBuffer: true }}
       camera={{ fov: 32, near: 8, far: 4000, position: [130, 105, 170] }}
       onPointerMissed={onMiss}
-      onCreated={({ gl }) => {
-        gl.setClearColor(bg)
+      style={{ background: bg }}
+      onCreated={({ scene }) => {
+        scene.fog = new THREE.Fog(bg, fogNear, fogFar)
+        scene.background = new THREE.Color(bg)
       }}
     >
-      <fog attach="fog" args={[bg, fogNear, fogFar]} />
       <CaptureBridge captureRef={captureRef} />
       <Lights length={layout.totalLength} roadMid={(layout.roadZ0 + layout.roadZ1) / 2} />
       <Roadway
@@ -209,10 +218,13 @@ export function RoadScene({
         makeDefault
         enablePan={false}
         enableDamping
+        enableZoom={!compact}
+        enableRotate={!compact}
         dampingFactor={0.08}
         rotateSpeed={0.28}
         zoomSpeed={0.38}
       />
+
       <FitOrbit
         roadZ0={layout.roadZ0}
         roadZ1={layout.roadZ1}

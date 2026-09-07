@@ -47,7 +47,8 @@ export async function qrPosterBlob(input: QrPosterInput): Promise<Blob> {
   ctx.font = '700 36px "PingFang SC","Microsoft YaHei",sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText('路安施工管理', width / 2, 54)
+  ctx.fillText('陌上', width / 2, 54)
+
 
   ctx.fillStyle = QR_DARK
   ctx.font = '700 40px "PingFang SC","Microsoft YaHei",sans-serif'

@@ -216,11 +216,16 @@ svg {
   letter-spacing: -0.3px;
   text-decoration: none;
 }
-.app-brand svg {
+.app-brand-mark {
   width: 25px;
   height: 25px;
-  color: var(--accent);
+  border-radius: 6px;
 }
+
+.app-brand-short {
+  display: none;
+}
+
 
 .app-nav {
   display: flex;
@@ -283,6 +288,15 @@ svg {
   align-items: center;
   gap: 8px;
 }
+.header-desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mobile-tabbar {
+  display: none;
+}
+
 
 .project-switcher {
   height: 32px;
@@ -1075,6 +1089,18 @@ svg {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.stake-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.photo-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 .status-chip {
   width: max-content;
   display: inline-flex;
@@ -1276,11 +1302,12 @@ th {
    ========================================================= */
 
 .workbench-app-frame {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
 
 .workbench-container {
   flex: 1;
@@ -1301,6 +1328,10 @@ th {
   background: linear-gradient(180deg, #edf0f4 0%, #f4f5f8 100%);
   overflow: hidden;
 }
+.workbench-dock-switch {
+  display: none;
+}
+
 
 /* 左侧 macOS 统一侧栏卡片 */
 .panel-sidebar {
@@ -2536,6 +2567,13 @@ th {
   width: 14px;
   height: 14px;
 }
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 
 .diagram-stage {
   position: relative;
@@ -3005,73 +3043,574 @@ th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .detail-shell {
-    grid-template-columns: 220px minmax(600px, 1fr);
+    grid-template-columns: 220px minmax(0, 1fr);
   }
   .record-inspector {
     display: none;
   }
+
   .registry-filter {
     grid-template-columns: repeat(4, 1fr);
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1024px) {
+  :root {
+    --tabbar-h: calc(52px + env(safe-area-inset-bottom, 0px));
+  }
+  .app-frame:has(.mobile-tabbar) {
+    padding-bottom: var(--tabbar-h);
+  }
+
+  .app-nav,
+  .breadcrumbs,
+  .header-desktop-actions,
+  .topbar.compact-hide {
+    display: none;
+  }
   .app-header {
-    height: auto;
-    min-height: 56px;
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    min-height: calc(52px + env(safe-area-inset-top, 0px));
+    flex-wrap: nowrap;
+    padding: env(safe-area-inset-top, 0px) 14px 0;
+    gap: 10px;
+  }
+  .app-header-tools {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+  .project-switcher-wrap {
+    flex: 1;
+    min-width: 0;
+    max-width: 420px;
+  }
+  .project-switcher {
+    width: 100%;
+    max-width: none;
+    height: 36px;
+  }
+  .mobile-tabbar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    width: auto;
+    overflow: hidden;
+    height: var(--tabbar-h);
+    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.84);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.04);
+  }
+  .mobile-tabbar a {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 44px;
+    overflow: hidden;
+    border-radius: 10px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: color 140ms ease, background-color 140ms ease, transform 140ms var(--ease-out);
+  }
+  .mobile-tabbar a svg {
+    width: 20px;
+    height: 20px;
+  }
+  .mobile-tabbar a.active {
+    color: var(--accent);
+    background: var(--accent-tint);
+  }
+  .mobile-tabbar a:active {
+    transform: scale(0.96);
+  }
+
+
+  .page,
+  .dashboard-page,
+  .registry-page,
+  .guest-home-page {
+    width: min(100% - 32px, 1320px);
+    padding: 22px 0 28px;
+  }
+  .dashboard-heading,
+  .registry-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .dashboard-heading h1,
+  .registry-heading h1 {
+    font-size: 28px;
+  }
+  .heading-actions,
+  .excel-tools {
     flex-wrap: wrap;
-    row-gap: 4px;
-    padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 8px;
+  }
+  .dashboard-controls {
+    grid-template-columns: minmax(0, 1fr) 160px;
+  }
+  .registry-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .registry-filter .filter-search {
+    grid-column: 1 / -1;
+  }
+  .registry-columns,
+  .registry-row {
+    grid-template-columns: 1.2fr 1.6fr 0.9fr 0.9fr;
+    gap: 12px;
+  }
+  .registry-columns span:nth-child(3),
+  .registry-row > span:nth-child(3),
+  .registry-columns span:nth-child(5),
+  .registry-row > span:nth-child(5) {
+    display: none;
+  }
+  .calendar-card,
+  .calendar-day-section {
+    max-width: none;
+  }
+  .calendar-card {
+    padding: 20px 18px;
+  }
+  .btn {
+    min-height: 40px;
+  }
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea,
+  .form input,
+  .form select,
+  .form textarea,
+  .dashboard-controls input,
+  .dashboard-controls select,
+  .registry-filter input,
+  .registry-filter select {
+    font-size: 16px;
+  }
+  .detail-frame {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .detail-shell {
+    height: auto;
+    min-height: calc(100dvh - 52px - env(safe-area-inset-top, 0px));
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .phase-workspace-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspace-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .workspace-heading h1 {
+    font-size: 20px;
+    overflow-wrap: anywhere;
+  }
+  .plan-panel {
+    width: min(240px, 28vw);
+  }
+  .app-workbench {
+    padding: 10px;
+    gap: 10px;
+  }
+  .panel-sidebar {
+    width: min(280px, 32vw);
+  }
+
+  .legend-box {
+    min-width: 0;
+    max-width: min(260px, calc(100% - 24px));
+  }
+  .fold-btn {
+    white-space: nowrap;
+  }
+  .panel-sidebar .seg {
+    width: 100%;
+  }
+  .panel-sidebar .seg button {
+    min-width: 0;
+    white-space: normal !important;
+    font-size: 11px;
+    padding: 0 6px;
+  }
+  .hint-bar {
+    display: none;
+  }
+
+
+
+}
+
+@media (max-width: 720px) {
+  .app-brand-full {
+    display: none;
+  }
+  .app-brand-short {
+    display: inline;
+  }
+  .app-header {
+    padding: env(safe-area-inset-top, 0px) 12px 0;
+  }
+  .page,
+  .dashboard-page,
+  .registry-page,
+  .guest-home-page {
+    width: calc(100% - 24px);
+    padding: 16px 0 24px;
+  }
+  .page.account-page {
+    width: calc(100% - 24px);
+  }
+  .dashboard-heading h1,
+  .registry-heading h1 {
+    font-size: 24px;
+  }
+
+  .dashboard-heading p:last-child,
+  .registry-heading p:last-child {
+    font-size: 13px;
+  }
+  .dashboard-controls {
+    grid-template-columns: 1fr;
+  }
+  .recent-projects {
+    grid-template-columns: 1fr;
     gap: 8px;
   }
+  .project-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .heading-actions {
+
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .heading-actions .excel-tools {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .heading-actions > .btn-primary {
+    flex: 1 1 100%;
+  }
+  .registry-heading h1 {
+    overflow-wrap: anywhere;
+  }
+  .import-success {
+    overflow-wrap: anywhere;
+  }
+
+  .registry-summary {
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 12px 14px;
+  }
+  .registry-columns {
+    display: none;
+  }
+  .registry-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    min-height: 0;
+    padding: 14px;
+  }
+  .registry-row > span:nth-child(1) {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .registry-row > span:nth-child(6) {
+    display: inline-flex;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+  .registry-row > span:nth-child(2),
+  .registry-row > span:nth-child(3) {
+    display: block;
+    grid-column: 1 / -1;
+  }
+  .registry-row > span:nth-child(4) {
+    display: block;
+    grid-column: 1;
+    color: var(--dim);
+    font-size: 12px;
+  }
+  .registry-row > span:nth-child(5) {
+    display: inline-flex;
+    grid-column: 2;
+    justify-self: end;
+    color: var(--dim);
+    font-size: 12px;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .detail-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .record-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+  .sidebar-project {
+    padding: 12px 14px 8px;
+  }
+  .record-sidebar .excel-tools {
+    display: none;
+  }
+  .sidebar-records {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 12px 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar-record {
+    flex: 0 0 220px;
+  }
+  .drawing-workspace {
+    overflow: visible;
+    padding: 16px 12px 24px;
+  }
+  .workspace-heading {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+  }
+  .workspace-actions {
+    justify-content: stretch;
+  }
+  .workspace-actions .btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+  .phase-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+  .record-inspector {
+    display: flex;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 16px 12px max(20px, env(safe-area-inset-bottom, 20px));
+    overflow: visible;
+  }
+
+  .zone-list-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 14px;
+    gap: 10px 12px;
+  }
+  .zone-list-foot {
+    width: 100%;
+    padding-left: 56px;
+    justify-content: space-between;
+  }
+  .page > .topbar {
+    min-height: 44px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .page > .topbar h1 {
+    font-size: 18px;
+  }
+  .topbar-spacer {
+    display: none;
+  }
+  .login-form {
+    margin: 8px auto 28px;
+  }
+  .login-form .form-card {
+    padding: 20px 16px 14px;
+  }
+  .calendar-card {
+    padding: 14px 10px 16px;
+    margin-bottom: 16px;
+    border-radius: 16px;
+  }
+  .calendar-cell {
+    height: 44px;
+    border-radius: 10px;
+  }
+  .calendar-legend {
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+  .calendar-day-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .calendar-day-item-main {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .guest-features {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 16px auto 28px;
+  }
+  .guest-hero {
+    padding: 16px 0 12px;
+  }
+  .guest-hero h1 {
+    font-size: 22px;
+  }
+  .guest-hero-sub {
+    font-size: 13px;
+  }
+
+  .guest-hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .guest-hero-actions .btn {
+    width: 100%;
+  }
+  .guest-footer-note {
+    text-align: center;
+    padding: 0 8px;
+  }
+  .btn {
+    min-height: 44px;
+  }
+  .workbench-app-frame,
+  .workbench-container,
+  .app-workbench {
+    height: auto;
+    overflow: visible;
+  }
+  .workbench-app-frame {
+    min-height: 100dvh;
+  }
   .viewbar {
-    top: max(10px, env(safe-area-inset-top, 10px));
-    left: 10px;
-    right: 10px;
+    top: 8px;
+    left: 8px;
+    right: 8px;
     transform: none;
     max-width: none;
     width: auto;
-    padding: 5px;
+    padding: 4px;
     gap: 4px;
-    justify-content: space-between;
-    overflow-x: auto;
+    justify-content: center;
+    flex-wrap: wrap !important;
+    white-space: normal !important;
+  }
+
+  .viewbar button span {
+    display: none;
+  }
+  .cam-pad button {
+    width: 36px;
+    padding: 0;
+  }
+  .viewbar .plan-btn,
+  .viewbar .export-btn {
+    width: 36px;
+    padding: 0;
   }
   .app-workbench {
     padding: 0;
     flex-direction: column;
     gap: 0;
   }
-  .plan-panel {
-    display: none;
-  }
   .stage-card {
+
+    order: 1;
+    flex: none;
+    height: 48vh;
+    min-height: 260px;
     border-radius: 0;
     border: none;
     box-shadow: none;
   }
   .panel-sidebar {
-    position: absolute;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-height: min(78vh, 78dvh);
-    overscroll-behavior: contain;
-    border-radius: 20px 20px 0 0;
-    padding: 16px 8px max(16px, env(safe-area-inset-bottom, 16px)) 16px;
-    box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.15);
-    z-index: 30;
+    order: 2;
   }
-  .app-workbench.sidebar-collapsed .panel-sidebar {
+  .plan-panel {
+    order: 3;
+  }
+  .panel-sidebar,
+  .plan-panel {
+    display: flex;
+    position: relative;
     top: auto;
-    bottom: max(14px, env(safe-area-inset-bottom, 14px));
-    left: 12px;
+    bottom: auto;
+    left: auto;
     right: auto;
-    width: auto;
-    padding: 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    z-index: 5;
+    padding: 16px 14px 20px;
+  }
+  .panel-sidebar,
+  .plan-panel,
+  .panel-body,
+  .plan-body {
+    overflow: visible;
+  }
+  .stage-card canvas {
+    touch-action: pan-y;
+  }
+
+  .panel-sidebar .fold-btn,
+  .plan-panel .fold-btn,
+  .panel-folded .fold-tab {
+    display: none;
+  }
+  .legend-box,
+  .hint-bar {
+    display: none;
+  }
+  .sign-card {
+    left: 10px;
+    right: 10px;
+    top: 56px;
+    max-width: none;
+  }
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+
+}
+
+@media (hover: none) {
+  .project-card:hover,
+  .zone-list-item:hover:not(.user-row),
+  .guest-feature-card:hover,
+  .sign-gallery-card:hover {
+    transform: none;
   }
 }
+
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -3343,14 +3882,6 @@ th {
   font-size: 12px;
 }
 
-@media (max-width: 768px) {
-  .guest-features {
-    grid-template-columns: 1fr;
-  }
-  .guest-hero {
-    padding: 24px 0 20px;
-  }
-}
 
 /* =========================================================
    ZONE LIST & USER LIST MACOS CARD STYLES
@@ -3488,4 +4019,153 @@ th {
   line-height: 1.6;
   color: var(--muted);
   text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
+
+
+.page.account-page {
+  width: min(560px, calc(100% - 36px));
+}
+.account-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.account-avatar {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.account-avatar svg {
+  width: 24px;
+  height: 24px;
+}
+.account-hero-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.account-hero-meta strong {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.account-hero-meta span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.account-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.account-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-edge);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 550;
+  box-shadow: var(--shadow-sm);
+}
+.button.account-link,
+button.account-link {
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.account-link svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.account-page .login-form {
+  margin: 18px 0 16px;
+  max-width: none;
+}
+.account-page .form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.account-page .form-section-title svg {
+  width: 14px;
+  height: 14px;
+}
+.account-logout {
+  margin-top: 8px;
+}
+
+@media (max-width: 1024px) {
+  .mobile-tabbar {
+    left: 0;
+    right: auto;
+    width: 100dvw;
+    max-width: 100dvw;
+  }
+}
+
+
+@media (max-width: 720px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+  .guest-home-page {
+    width: auto;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+  .login-form {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .guest-features {
+    grid-template-columns: 1fr;
+  }
+  .guest-hero h1 {
+    font-size: 22px;
+    overflow-wrap: anywhere;
+  }
+  .guest-hero-sub,
+  .pin-hint,
+  .guest-feature-card,
+  .guest-hero {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .pin-hint {
+    padding: 0 4px;
+    max-width: 22rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+}
+
+
+
+
+

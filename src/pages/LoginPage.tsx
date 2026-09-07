@@ -71,7 +71,7 @@ export default function LoginPage() {
     <div className="app-frame">
       <AppHeader trail={[{ label: '登录' }]} />
       <div className="page">
-        <header className="topbar">
+        <header className="topbar compact-hide">
           <a className="btn" href={backHash}>
             ← 返回
           </a>
@@ -106,7 +106,8 @@ export default function LoginPage() {
           <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
             {busy ? '登录中…' : '登录'}
           </button>
-          <p className="pin-hint">未登录可使用布置图和标志牌；项目台账、三照和已保存布控需登录后使用。</p>
+          <p className="pin-hint">未登录可用布置图和标志牌。项目台账需登录后使用。</p>
+
         </form>
       </div>
     </div>

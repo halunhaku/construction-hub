@@ -47,7 +47,10 @@ export function ParamPanel({
   return (
     <aside
       className={isFolded ? 'panel-sidebar panel panel-folded' : 'panel-sidebar panel'}
-      onWheel={(e) => e.stopPropagation()}
+      onWheel={(e) => {
+        if (window.innerWidth > 720) e.stopPropagation()
+      }}
+
     >
       {isFolded ? (
         <button
