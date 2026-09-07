@@ -3,8 +3,9 @@ import { buildLayout } from './layout/buildLayout'
 import { buildDevices, type SignSpot } from './layout/devices'
 import { RoadScene, type CameraApi, type CaptureFn } from './scene/RoadScene'
 import { Hud } from './ui/Hud'
-import { ViewBar, type ExportKind } from './ui/ViewBar'
-import { overlayUiOnScene, pngFilename, saveBlob } from './ui/export3d'
+import { ViewBar } from './ui/ViewBar'
+import { pngFilename, saveBlob } from './ui/export3d'
+
 import type { Params } from '../types'
 
 export interface Road3DViewerProps {
@@ -42,32 +43,21 @@ export function Road3DViewer({
     }, duration)
   }
 
-  async function handleExport(kind: ExportKind) {
+  async function handleExport() {
     if (!captureRef.current || exporting) return
     setExporting(true)
-    showToast('正在渲染导出图片…', 5000)
+    showToast('正在截取 3D 画面…', 5000)
     try {
       const sceneBlob = await captureRef.current()
-      if (kind === 'scene') {
-        saveBlob(sceneBlob, pngFilename(`${params.start || 'zone'}-3D全景`))
-        showToast('3D 全景渲染图已导出')
-      } else if (kind === 'ui' && viewerRef.current) {
-        const canvas = viewerRef.current.querySelector('canvas')
-        if (!canvas) throw new Error('未找到画布')
-        const uiBlob = await overlayUiOnScene(sceneBlob, viewerRef.current, canvas)
-        saveBlob(uiBlob, pngFilename(`${params.start || 'zone'}-3D界面`))
-        showToast('含 UI 界面图已导出')
-      } else {
-        // 默认导出 3D 渲染
-        saveBlob(sceneBlob, pngFilename(`${params.start || 'zone'}-3D`))
-        showToast('3D 图像已导出')
-      }
+      saveBlob(sceneBlob, pngFilename(`${params.start || 'zone'}-3D`))
+      showToast('已导出 3D 截图')
     } catch (err) {
-      showToast(err instanceof Error ? err.message : '导出失败')
+      showToast(err instanceof Error ? err.message : '截图失败')
     } finally {
       setExporting(false)
     }
   }
+
 
   return (
     <div
@@ -88,7 +78,6 @@ export function Road3DViewer({
 
       {showControls && (
         <ViewBar
-          showPlan={false}
           onExport={handleExport}
           exporting={exporting}
           onRotate={(delta) => cameraRef.current?.rotate(delta)}
@@ -96,6 +85,7 @@ export function Road3DViewer({
           onReset={() => cameraRef.current?.reset()}
         />
       )}
+
 
       {showHud && (
         <Hud

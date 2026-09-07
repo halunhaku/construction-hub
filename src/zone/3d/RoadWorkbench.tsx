@@ -5,8 +5,10 @@ import { RoadScene, type CameraApi, type CaptureFn } from './scene/RoadScene'
 import { Hud } from './ui/Hud'
 import { ParamPanel } from './ui/ParamPanel'
 import { PlanPanel } from './ui/PlanPanel'
-import { ViewBar, type ExportKind } from './ui/ViewBar'
-import { overlayUiOnScene, pngFilename, saveBlob } from './ui/export3d'
+import { ViewBar } from './ui/ViewBar'
+import { pngFilename, saveBlob } from './ui/export3d'
+
+
 import type { Params } from '../types'
 import { stake } from '../utils'
 
@@ -67,32 +69,24 @@ export function RoadWorkbench({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  async function handleExport(kind: ExportKind) {
+  async function handleExport() {
     if (!captureRef.current || exporting) return
     setExporting(true)
-    showToast('正在生成渲染图片…', 5000)
+    showToast('正在截取 3D 画面…', 5000)
     try {
       const scene = await captureRef.current()
-      const app = appRef.current
-      const sceneCanvas = app?.querySelector('.stage-card canvas') as HTMLCanvasElement | null
       const work = layout.segments[3]
       const label = `${work ? stake(work.startStake) : 'zone'}-3D`
-
-      if (kind === 'ui' && app && sceneCanvas) {
-        const uiBlob = await overlayUiOnScene(scene, app, sceneCanvas)
-        saveBlob(uiBlob, pngFilename(`${label}-含界面`))
-        showToast('已导出含 UI 界面截图 (PNG)')
-      } else {
-        saveBlob(scene, pngFilename(label))
-        showToast('已导出 3D 全景渲染图 (PNG)')
-      }
+      saveBlob(scene, pngFilename(label))
+      showToast('已导出 3D 截图')
     } catch (err) {
       console.error('export png failed', err)
-      showToast('导出图片失败，请重试')
+      showToast('截图失败，请重试')
     } finally {
       setExporting(false)
     }
   }
+
 
   return (
     <div className={`app-workbench${sidebarFolded ? ' sidebar-collapsed' : ''}`} ref={appRef}>

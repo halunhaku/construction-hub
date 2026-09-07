@@ -1,7 +1,12 @@
-import type { RefObject } from 'react'
+import { useState, type RefObject } from 'react'
+import { Download, Images } from 'lucide-react'
 import { ZoneDiagrams } from '../../RoadDiagram'
+import { buildExportPages, downloadPdf, renderPageToBlob, signSchedule, signScheduleDouble, snapshotDiagram } from '../../export'
+import { buildZones } from '../../utils'
+import { validateZone } from '../../validation'
 import type { Params } from '../../types'
 import type { RoadLayout } from '../layout/buildLayout'
+
 
 export function PlanPanel({
   params,
@@ -16,6 +21,83 @@ export function PlanPanel({
   onToggleFold: () => void
   hostRef: RefObject<HTMLDivElement | null>
 }) {
+  const [exporting, setExporting] = useState<'pdf' | 'album' | null>(null)
+  const [flash, setFlash] = useState('')
+
+  function collectPages(): string[] | null {
+    const errors = validateZone(params)
+    const first = Object.entries(errors)[0]
+    if (first) {
+      setFlash(`${first[0] === 'start' ? '起始桩号' : first[0] === 'work' ? '作业区长度' : '布置参数'}：${first[1]}`)
+      return null
+    }
+    const svgs = [...(hostRef.current?.querySelectorAll('svg') ?? [])] as SVGSVGElement[]
+    if (svgs.length === 0) {
+      setFlash('布置图未就绪，请稍后重试')
+      return null
+    }
+    setFlash('')
+    const zones = buildZones(params)
+    const total = zones.reduce((sum, zone) => sum + zone.length, 0)
+    const signRows = params.doubleSide
+      ? signScheduleDouble(zones, params.direction, params.speed)
+      : signSchedule(zones, params.direction, params.speed)
+    const { diagramPages, tablePage } = buildExportPages({
+      diagrams: svgs.map((svg) => ({
+        ...snapshotDiagram(svg),
+        caption: !params.doubleSide ? '' : svg.getAttribute('data-direction') === 'down' ? '下行' : '上行',
+      })),
+      params,
+      zones,
+      signRows,
+      total,
+      doubleSide: params.doubleSide,
+      orientation: 'portrait',
+    })
+    return [...diagramPages, tablePage]
+  }
+
+  function exportA4() {
+    const pages = collectPages()
+    if (!pages) return
+    setExporting('pdf')
+    downloadPdf(pages, 2480, 3508, 210, 297, `A4纵向-作业区布置-${params.start}.pdf`, () => setExporting(null))
+  }
+
+  async function saveAlbum() {
+    const pages = collectPages()
+    if (!pages) return
+    setExporting('album')
+    try {
+      const files: File[] = []
+      for (const [index, page] of pages.entries()) {
+        const blob = await renderPageToBlob(page, 2480, 3508, 'image/jpeg', 0.92)
+        files.push(new File([blob], `A4布置图-${index + 1}-${params.start}.jpg`, { type: 'image/jpeg' }))
+      }
+      const shareData = { files, title: 'A4 布置图' }
+      if (navigator.canShare?.(shareData)) {
+        await navigator.share(shareData)
+      } else {
+        files.forEach((file, index) => {
+          window.setTimeout(() => {
+            const a = document.createElement('a')
+            const url = URL.createObjectURL(file)
+            a.href = url
+            a.download = file.name
+            a.click()
+            window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+          }, index * 450)
+        })
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      setFlash(err instanceof Error ? err.message : '保存失败')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+
   return (
     <aside className={folded ? 'plan-panel panel-folded' : 'plan-panel'}>
       {folded ? (
@@ -82,6 +164,20 @@ export function PlanPanel({
           vertical
         />
       </div>
+      {folded ? null : (
+        <div className="plan-export">
+          {flash ? <div className="notice error">{flash}</div> : null}
+          <button type="button" className="btn btn-primary btn-block" disabled={Boolean(exporting)} onClick={exportA4}>
+            <Download />
+            {exporting === 'pdf' ? '正在生成 A4…' : '导出 A4 布置图'}
+          </button>
+          <button type="button" className="btn btn-block" disabled={Boolean(exporting)} onClick={() => void saveAlbum()}>
+            <Images />
+            {exporting === 'album' ? '正在生成图片…' : '保存到相册'}
+          </button>
+        </div>
+      )}
     </aside>
   )
 }
+

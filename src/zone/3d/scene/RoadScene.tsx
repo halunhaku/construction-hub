@@ -151,13 +151,27 @@ function CaptureBridge({ captureRef }: { captureRef?: MutableRefObject<CaptureFn
   useLayoutEffect(() => {
     if (!captureRef) return
     captureRef.current = async () => {
+      const canvas = gl.domElement
+      const cssW = canvas.clientWidth
+      const cssH = canvas.clientHeight
+      const prevRatio = gl.getPixelRatio()
+      const captureRatio = Math.max(3, Math.min(4, (window.devicePixelRatio || 1) * 2))
+      gl.setPixelRatio(captureRatio)
+      gl.setSize(cssW, cssH, false)
       gl.render(scene, camera)
-      return canvasToPng(gl.domElement)
+      try {
+        return await canvasToPng(canvas)
+      } finally {
+        gl.setPixelRatio(prevRatio)
+        gl.setSize(cssW, cssH, false)
+        gl.render(scene, camera)
+      }
     }
     return () => {
       captureRef.current = null
     }
   }, [camera, captureRef, gl, scene])
+
 
   return null
 }
