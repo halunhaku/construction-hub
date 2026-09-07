@@ -74,28 +74,32 @@ export function PlanPanel({
         const blob = await renderPageToBlob(page, 2480, 3508, 'image/jpeg', 0.92)
         files.push(new File([blob], `A4布置图-${index + 1}-${params.start}.jpg`, { type: 'image/jpeg' }))
       }
-      const shareData = { files, title: 'A4 布置图' }
-      if (navigator.canShare?.(shareData)) {
-        await navigator.share(shareData)
-      } else {
-        files.forEach((file, index) => {
-          window.setTimeout(() => {
-            const a = document.createElement('a')
-            const url = URL.createObjectURL(file)
-            a.href = url
-            a.download = file.name
-            a.click()
-            window.setTimeout(() => URL.revokeObjectURL(url), 2000)
-          }, index * 450)
-        })
+      const mobile = window.matchMedia('(pointer: coarse)').matches || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      try {
+        if (mobile && navigator.canShare?.({ files })) {
+          await navigator.share({ files, title: 'A4 布置图' })
+          return
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
       }
+      files.forEach((file, index) => {
+        window.setTimeout(() => {
+          const a = document.createElement('a')
+          const url = URL.createObjectURL(file)
+          a.href = url
+          a.download = file.name
+          a.click()
+          window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+        }, index * 450)
+      })
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return
       setFlash(err instanceof Error ? err.message : '保存失败')
     } finally {
       setExporting(null)
     }
   }
+
 
 
   return (
@@ -173,8 +177,15 @@ export function PlanPanel({
           </button>
           <button type="button" className="btn" disabled={Boolean(exporting)} onClick={() => void saveAlbum()}>
             <Images />
-            {exporting === 'album' ? '正在生成图片…' : '保存到相册'}
+            {exporting === 'album' ? '正在生成图片…' : (
+              <>
+                <span className="plan-export-desktop-label">下载图片</span>
+                <span className="plan-export-mobile-label">保存到相册</span>
+              </>
+            )}
           </button>
+
+
         </div>
       )}
 
