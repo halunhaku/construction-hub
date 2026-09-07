@@ -539,6 +539,10 @@ svg {
 .btn-block {
   width: 100%;
 }
+.record-form-actions {
+  margin-top: 16px;
+}
+
 .text-button {
   min-height: 32px;
   padding: 0 6px;
@@ -3742,10 +3746,51 @@ th {
     grid-template-columns: 1fr;
   }
 
-
-
-
+  .record-form-page .page {
+    padding-bottom: 88px;
+  }
+  .record-form-page .form-card {
+    padding: 14px 14px 8px;
+  }
+  .record-form-page .form input,
+  .record-form-page .form select {
+    min-height: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  .record-form-page .seg button {
+    min-height: 44px;
+    height: 44px;
+  }
+  .record-form-page .zone-preview-inline {
+    max-height: 220px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .record-form-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--tabbar-h);
+    z-index: 40;
+    margin: 0;
+    padding: 10px 16px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+  .record-form-actions .btn-block {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+  }
 }
+
+
+
 
 @media (hover: none) {
   .project-card:hover,

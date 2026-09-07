@@ -206,7 +206,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
   }
 
   return (
-    <div className="app-frame">
+    <div className="app-frame record-form-page">
       <AppHeader
         trail={
           editing && id
@@ -232,6 +232,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         <h1>{editing ? '编辑施工记录' : '新建施工记录'}</h1>
         <span className="topbar-spacer" />
       </header>
+
 
 
       <form ref={formRef} className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
@@ -322,7 +323,7 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
               className={form.direction === 'up' ? 'on active' : ''}
               onClick={() => handleDirection('up')}
             >
-              ↑ 上行 (桩号递增)
+              上行
             </button>
             <button
               type="button"
@@ -331,8 +332,9 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
               className={form.direction === 'down' ? 'on active' : ''}
               onClick={() => handleDirection('down')}
             >
-              ↓ 下行 (桩号递减)
+              下行
             </button>
+
           </div>
         </div>
 
@@ -375,10 +377,13 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
 
         {error && <div className="notice error">{error}</div>}
 
-        <button type="submit" className="btn btn-primary btn-block" disabled={saving || loading}>
-          {saving ? '保存中…' : editing ? '保存修改' : '保存，并拍摄三照'}
-        </button>
+        <div className="record-form-actions">
+          <button type="submit" className="btn btn-primary btn-block" disabled={saving || loading}>
+            {saving ? '保存中…' : editing ? '保存修改' : '保存，并拍摄三照'}
+          </button>
+        </div>
       </form>
+
       </div>
     </div>
   )
