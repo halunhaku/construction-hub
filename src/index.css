@@ -542,6 +542,42 @@ svg {
 .record-form-actions {
   margin-top: 16px;
 }
+.record-form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.record-form-preview {
+  min-width: 0;
+  padding: 16px 18px;
+}
+@media (min-width: 900px) {
+  .record-form-page .page {
+    width: min(1180px, calc(100% - 40px));
+  }
+  .record-form-page .form-card {
+    padding: 16px 18px;
+  }
+  .record-form-page .form label {
+    margin-bottom: 12px;
+  }
+  .record-form-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 0.92fr);
+    gap: 20px;
+    align-items: start;
+  }
+  .record-form-preview {
+    position: sticky;
+    top: 72px;
+    max-height: calc(100dvh - 96px);
+    overflow: auto;
+  }
+  .record-form-actions {
+    max-width: 280px;
+  }
+}
+
 
 .text-button {
   min-height: 32px;

@@ -9,6 +9,41 @@ import ZoneExportButtons from './ZoneExportButtons'
  * 作业区布置参数表单 + 实时预览（新建记录页与布置编辑页共用）。
  * value 为 null 表示"未启用布置图"（折叠态）。
  */
+export function ZoneLivePreview({ value }: { value: ZoneParams }) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const zones = useMemo(() => buildZones(value), [value])
+  const total = useMemo(() => zones.reduce((s, z) => s + z.length, 0), [zones])
+  const mirrored = useMemo(
+    () => (value.doubleSide ? mirrorZones(zones, value.direction) : undefined),
+    [value.direction, value.doubleSide, zones],
+  )
+  const extent = useMemo(() => zoneExtent(zones, mirrored), [mirrored, zones])
+
+  return (
+    <div className="zone-preview-inline" ref={previewRef}>
+      <p className="zone-meta">
+        {value.start} · {value.direction === 'up' ? '上行' : '下行'} ·{' '}
+        {value.workSide === 'median' ? '中央分隔带' : '路侧'}
+        {value.doubleSide ? ' · 双侧占路' : ''} ·{' '}
+        {value.doubleSide ? '单侧长度' : '总长'} {total.toLocaleString()}m
+        {value.doubleSide
+          ? ` · 整体影响 ${stake(extent.min)}—${stake(extent.max)}（${extent.span.toLocaleString()}m）`
+          : ''}
+      </p>
+      <ZoneDiagrams
+        zones={zones}
+        direction={value.direction}
+        workSide={value.workSide}
+        doubleSide={value.doubleSide}
+        zoom={1}
+        coneGap={value.coneGap}
+        speed={value.speed}
+        vertical
+      />
+    </div>
+  )
+}
+
 export default function ZoneForm({
   value,
   onChange,
@@ -16,6 +51,7 @@ export default function ZoneForm({
   linked = false,
   showErrors = false,
   allowExport = false,
+  showPreview = true,
 }: {
   value: ZoneParams | null
   onChange: (zone: ZoneParams | null) => void
@@ -26,19 +62,14 @@ export default function ZoneForm({
   showErrors?: boolean
   /** 独立布控新建页：不入库也能导出 A4 图纸 */
   allowExport?: boolean
+  showPreview?: boolean
 }) {
   const previewRef = useRef<HTMLDivElement>(null)
+
   const enabled = allowDisable ? value !== null : true
   const form = value ?? defaults
   const errors = showErrors ? validateZone(value) : {}
 
-  const zones = useMemo(() => buildZones(form), [form])
-  const total = useMemo(() => zones.reduce((s, z) => s + z.length, 0), [zones])
-  const mirrored = useMemo(
-    () => (form.doubleSide ? mirrorZones(zones, form.direction) : undefined),
-    [form.direction, form.doubleSide, zones],
-  )
-  const extent = useMemo(() => zoneExtent(zones, mirrored), [mirrored, zones])
 
   function set<K extends keyof ZoneParams>(key: K, v: ZoneParams[K]) {
     onChange({ ...form, [key]: v })
@@ -264,37 +295,20 @@ export default function ZoneForm({
               {errors.speed && <p className="field-error">{errors.speed}</p>}
             </div>
           </details>
-
-          <div className="zone-preview-inline" ref={previewRef}>
-            <p className="zone-meta">
-              {form.start} · {form.direction === 'up' ? '上行' : '下行'} ·{' '}
-              {form.workSide === 'median' ? '中央分隔带' : '路侧'}
-              {form.doubleSide ? ' · 双侧占路' : ''} ·{' '}
-              {form.doubleSide ? '单侧长度' : '总长'} {total.toLocaleString()}m
-              {form.doubleSide
-                ? ` · 整体影响 ${stake(extent.min)}—${stake(extent.max)}（${extent.span.toLocaleString()}m）`
-                : ''}
-            </p>
-            <ZoneDiagrams
-              zones={zones}
-              direction={form.direction}
-              workSide={form.workSide}
-              doubleSide={form.doubleSide}
-              zoom={1}
-              coneGap={form.coneGap}
-              speed={form.speed}
-              vertical
-            />
-            {allowExport ? (
-              <>
-                <p className="pin-hint">导出 PNG / JPG / PDF 不会写入系统。登录后才能把布置保存到列表。</p>
-                <ZoneExportButtons
-                  params={form}
-                  getSvgs={() => [...(previewRef.current?.querySelectorAll<SVGSVGElement>('.roadSvg') ?? [])]}
-                />
-              </>
-            ) : null}
-          </div>
+          {showPreview ? (
+            <>
+              <ZoneLivePreview value={form} />
+              {allowExport ? (
+                <div ref={previewRef}>
+                  <p className="pin-hint">导出 PNG / JPG / PDF 不会写入系统。登录后才能把布置保存到列表。</p>
+                  <ZoneExportButtons
+                    params={form}
+                    getSvgs={() => [...document.querySelectorAll<SVGSVGElement>('.zone-form .roadSvg')]}
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </>
       )}
     </div>

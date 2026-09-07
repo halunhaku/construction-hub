@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createRecord, getOptions, getRecord, updateRecord } from '../api'
 import AppHeader from '../components/AppHeader'
-import ZoneForm from '../components/ZoneForm'
+import ZoneForm, { ZoneLivePreview } from '../components/ZoneForm'
+
 import type { ZoneParams } from '../types'
 import { focusFirstIssue, ZONE_ERROR_ORDER } from '../focus'
 import { navigate } from '../route.ts'
@@ -234,8 +235,9 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
       </header>
 
 
-
-      <form ref={formRef} className="form" onSubmit={submit} onChange={() => setError('')} noValidate>
+      <form ref={formRef} className="form record-form" onSubmit={submit} onChange={() => setError('')} noValidate>
+        <div className="record-form-layout">
+        <div className="record-form-main">
         <h2 className="form-section-title">基本信息</h2>
         <div className="card form-card">
         <label>
@@ -334,7 +336,6 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
             >
               下行
             </button>
-
           </div>
         </div>
 
@@ -369,10 +370,16 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
         <h2 className="form-section-title">作业区布置</h2>
         <div className="card form-card">
           {zone ? (
-            <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked showErrors={showZoneErrors} />
+            <ZoneForm value={zone} onChange={setZone} allowDisable={false} linked showErrors={showZoneErrors} showPreview={false} />
           ) : (
             <p className="inspector-empty">该记录暂无作业区布置图，保存后可在详情页创建。</p>
           )}
+        </div>
+        </div>
+
+        <aside className="record-form-preview card">
+          {zone ? <ZoneLivePreview value={zone} /> : <p className="inspector-empty">填写桩号后在这里看布置图。</p>}
+        </aside>
         </div>
 
         {error && <div className="notice error">{error}</div>}
