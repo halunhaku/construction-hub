@@ -2200,14 +2200,21 @@ th {
 .plan-export {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 14px 14px;
   border-top: 1px solid var(--line);
 }
 .plan-export .notice {
+  flex: 1 1 100%;
   margin-bottom: 0;
 }
+.plan-export .btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 
 
 .plan-body svg.roadSvg,

@@ -167,16 +167,17 @@ export function PlanPanel({
       {folded ? null : (
         <div className="plan-export">
           {flash ? <div className="notice error">{flash}</div> : null}
-          <button type="button" className="btn btn-primary btn-block" disabled={Boolean(exporting)} onClick={exportA4}>
+          <button type="button" className="btn btn-primary" disabled={Boolean(exporting)} onClick={exportA4}>
             <Download />
             {exporting === 'pdf' ? '正在生成 A4…' : '导出 A4 布置图'}
           </button>
-          <button type="button" className="btn btn-block" disabled={Boolean(exporting)} onClick={() => void saveAlbum()}>
+          <button type="button" className="btn" disabled={Boolean(exporting)} onClick={() => void saveAlbum()}>
             <Images />
             {exporting === 'album' ? '正在生成图片…' : '保存到相册'}
           </button>
         </div>
       )}
+
     </aside>
   )
 }
