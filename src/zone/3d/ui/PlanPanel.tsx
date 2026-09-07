@@ -31,7 +31,8 @@ export function PlanPanel({
       setFlash(`${first[0] === 'start' ? '起始桩号' : first[0] === 'work' ? '作业区长度' : '布置参数'}：${first[1]}`)
       return null
     }
-    const svgs = [...(hostRef.current?.querySelectorAll('svg') ?? [])] as SVGSVGElement[]
+    const svgs = [...(hostRef.current?.querySelectorAll<SVGSVGElement>('.roadSvg') ?? [])]
+
     if (svgs.length === 0) {
       setFlash('布置图未就绪，请稍后重试')
       return null
