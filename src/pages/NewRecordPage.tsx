@@ -375,12 +375,6 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
             <p className="inspector-empty">该记录暂无作业区布置图，保存后可在详情页创建。</p>
           )}
         </div>
-        </div>
-
-        <aside className="record-form-preview card">
-          {zone ? <ZoneLivePreview value={zone} /> : <p className="inspector-empty">填写桩号后在这里看布置图。</p>}
-        </aside>
-        </div>
 
         {error && <div className="notice error">{error}</div>}
 
@@ -388,6 +382,12 @@ export default function NewRecordPage({ project, id }: { project?: string; id?: 
           <button type="submit" className="btn btn-primary btn-block" disabled={saving || loading}>
             {saving ? '保存中…' : editing ? '保存修改' : '保存，并拍摄三照'}
           </button>
+        </div>
+        </div>
+
+        <aside className="record-form-preview card">
+          {zone ? <ZoneLivePreview value={zone} /> : <p className="inspector-empty">填写桩号后在这里看布置图。</p>}
+        </aside>
         </div>
       </form>
 
