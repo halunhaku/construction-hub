@@ -69,7 +69,6 @@ export default function AppHeader({
     (path === 'record' && hash.includes('/zone'))
   const calendarActive = path === 'calendar'
   const signsActive = path === 'signs'
-  const usersActive = path === 'users'
   const accountActive = path === 'account'
   const loginActive = path === 'login'
 
@@ -197,14 +196,6 @@ export default function AppHeader({
             </div>
           ) : null}
           <div className="header-desktop-actions">
-            {user?.is_admin ? (
-              <a className={`icon-btn${usersActive ? ' active' : ''}`} href="#/users" aria-label="账号" title="账号">
-                <Users />
-              </a>
-            ) : null}
-            <a className={`icon-btn${signsActive ? ' active' : ''}`} href="#/signs" aria-label="标志牌" title="标志牌">
-              <Signpost />
-            </a>
             {user ? (
               <div className="user-menu-wrap" ref={userWrapRef}>
                 <button
@@ -220,6 +211,17 @@ export default function AppHeader({
                 </button>
                 {userOpen ? (
                   <div className="user-menu" role="menu">
+                    {user.is_admin ? (
+                      <a
+                        href="#/users"
+                        role="menuitem"
+                        className="project-switcher-item"
+                        onClick={() => setUserOpen(false)}
+                      >
+                        <Users aria-hidden="true" />
+                        账号管理
+                      </a>
+                    ) : null}
                     <a
                       href="#/account"
                       role="menuitem"
