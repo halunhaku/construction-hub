@@ -86,13 +86,6 @@ export default function CalendarPage() {
     <div className="app-frame">
       <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '施工日历' }]} />
       <div className="page">
-        <header className="topbar compact-hide">
-          <a className="btn" href="#/">
-            ← 返回
-          </a>
-          <h1>施工日历</h1>
-          <span className="topbar-spacer" />
-        </header>
 
         <div className="card calendar-card">
           <div className="calendar-head">

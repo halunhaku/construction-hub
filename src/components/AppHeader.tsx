@@ -3,7 +3,6 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
-  ChevronRight,
   Home,
   KeyRound,
   Layers,
@@ -15,11 +14,10 @@ import {
   Users,
 } from 'lucide-react'
 
+
 import { listProjects, logout } from '../api'
 import { useAuth } from '../auth'
 import { safeReturnHash, setLoginIntent } from '../guestZone'
-
-export type Crumb = { label: string; href?: string }
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -42,15 +40,15 @@ function rememberLoginReturn() {
 }
 
 export default function AppHeader({
-  trail = [],
   project,
   projectKey,
 }: {
-  trail?: Crumb[]
+  trail?: { label: string; href?: string }[]
   project?: string
   /** 用于项目切换器高亮匹配的项目名（默认取 project，详情页会传「项目名 · 路段」） */
   projectKey?: string
 }) {
+
   const { user, setUser } = useAuth()
   const hash = useHash()
   const path = hashPath(hash)
@@ -74,8 +72,6 @@ export default function AppHeader({
   const usersActive = path === 'users'
   const accountActive = path === 'account'
   const loginActive = path === 'login'
-  const crumbs = trail.filter((item) => item.label)
-  const showCrumbs = crumbs.length > 1
 
   async function handleLogout() {
     try {
@@ -160,19 +156,6 @@ export default function AppHeader({
             </>
           )}
         </nav>
-        {showCrumbs ? (
-          <nav className="breadcrumbs" aria-label="面包屑">
-            {crumbs.map((item, index) => {
-              const isLast = index === crumbs.length - 1
-              return (
-                <span key={`${item.label}-${index}`}>
-                  {index > 0 ? <ChevronRight aria-hidden="true" /> : null}
-                  {item.href && !isLast ? <a href={item.href}>{item.label}</a> : item.label}
-                </span>
-              )
-            })}
-          </nav>
-        ) : null}
         <div className="app-header-tools">
           {user && project ? (
             <div className="project-switcher-wrap" ref={wrapRef}>

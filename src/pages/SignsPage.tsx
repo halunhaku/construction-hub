@@ -59,13 +59,8 @@ export default function SignsPage() {
     <div className="app-frame">
       <AppHeader trail={[{ label: '首页', href: '#/' }, { label: '标志牌库' }]} />
       <div className="page signs-page">
-        <header className="topbar">
-          <a className="btn" href="#/">
-            ← 首页
-          </a>
-          <h1>养护安全标志牌库</h1>
-          <span className="topbar-spacer" />
-        </header>
+        <h1>养护安全标志牌库</h1>
+
 
         <p className="signs-intro">
           严格遵循《公路养护安全作业规程》JTG H30—2015 规程标准制作的高精度矢量 SVG 标牌，已同步作为 3D 数字孪生贴图底模。支持一键复制 SVG 源码或下载矢量图。
