@@ -1738,6 +1738,25 @@ th {
   padding-top: 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
+.workbench-create .eyebrow-badge,
+.workbench-create .fold-btn {
+  display: none;
+}
+.workbench-create .panel-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 4px 0;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.workbench-create .panel-actions .btn-primary {
+  margin: 0;
+}
+
+
 .btn-reset {
   width: 100%;
   height: 32px;
@@ -3675,6 +3694,35 @@ th {
     min-height: 48px;
     border-radius: 14px;
   }
+  .app-workbench.workbench-create .panel-sidebar {
+    order: 1;
+  }
+  .app-workbench.workbench-create .stage-card {
+    order: 2;
+    height: 36vh;
+    min-height: 200px;
+  }
+  .app-workbench.workbench-create .plan-panel {
+    order: 3;
+    padding-bottom: 96px;
+  }
+  .app-workbench.workbench-create .panel-sidebar {
+    padding-bottom: 96px;
+  }
+  .app-workbench.workbench-create .panel-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--tabbar-h);
+    z-index: 40;
+    margin: 0;
+    padding: 10px 16px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
   .panel-sidebar .fold-btn,
   .plan-panel .fold-btn,
   .panel-folded .fold-tab {

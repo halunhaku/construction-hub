@@ -16,6 +16,8 @@ export interface ParamPanelProps {
   showErrors?: boolean
   backHref?: string
   headerExtra?: ReactNode
+  title?: string
+  subtitle?: string
 }
 
 export function ParamPanel({
@@ -31,7 +33,10 @@ export function ParamPanel({
   showErrors = false,
   backHref,
   headerExtra,
+  title = '作业区布置',
+  subtitle = '高精三维数字孪生 · 锥桶 / 标牌 / 占道',
 }: ParamPanelProps) {
+
   const [internalFolded, setInternalFolded] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
   const isFolded = externalFolded !== undefined ? externalFolded : internalFolded
   const toggleFold = onToggleFold || (() => setInternalFolded((f) => !f))
@@ -105,9 +110,10 @@ export function ParamPanel({
             </div>
           </div>
           <header className="panel-brand">
-            <h1>作业区布置</h1>
-            <p className="sub">高精三维数字孪生 · 锥桶 / 标牌 / 占道</p>
+            <h1>{title}</h1>
+            <p className="sub">{subtitle}</p>
           </header>
+
 
           {headerExtra}
 
@@ -295,23 +301,21 @@ export function ParamPanel({
             </dl>
 
             {saveError && <div className="notice error" style={{ margin: '8px 0' }}>{saveError}</div>}
-
-            <div className="panel-actions">
-              {onSave && (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-block"
-                  disabled={saving}
-                  onClick={onSave}
-                  style={{ marginBottom: 8 }}
-                >
-                  {saving ? '保存中…' : (saveLabel || '保存布控区域')}
-                </button>
-              )}
-              <button type="button" className="btn-reset" onClick={() => onChange(defaults)}>
-                ↺ 恢复规程默认配置
+          </div>
+          <div className="panel-actions">
+            {onSave && (
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                disabled={saving}
+                onClick={onSave}
+              >
+                {saving ? '保存中…' : (saveLabel || '保存布控区域')}
               </button>
-            </div>
+            )}
+            <button type="button" className="btn-reset" onClick={() => onChange(defaults)}>
+              ↺ 恢复规程默认配置
+            </button>
           </div>
         </>
       )}

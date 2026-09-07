@@ -89,7 +89,7 @@ export function RoadWorkbench({
 
 
   return (
-    <div className={`app-workbench${sidebarFolded ? ' sidebar-collapsed' : ''}`} ref={appRef}>
+    <div className={`app-workbench${sidebarFolded ? ' sidebar-collapsed' : ''}${onSave ? ' workbench-create' : ''}`} ref={appRef}>
       <ParamPanel
         params={params}
         onChange={onChange}
@@ -103,7 +103,10 @@ export function RoadWorkbench({
         showErrors={showErrors}
         backHref={backHref}
         headerExtra={headerExtra}
+        title={onSave ? '新建布控' : undefined}
+        subtitle={onSave ? '核对布置图后保存到布控列表' : undefined}
       />
+
       <main className="stage-card">
         <RoadScene
           layout={layout}
