@@ -44,7 +44,9 @@ function Router({ user }: { user: AuthUser | null }) {
   if (path === 'login') return user ? <DashboardPage /> : <LoginPage />
   if (path === 'signs') return <SignsPage />
   if (path === 'layout' && id === 'view') return <LayoutViewPage />
-  if (path === 'layout' || (path === 'zones' && id === 'new')) return <LayoutPage />
+  if (path === 'layout') return <LayoutPage standalone />
+  if (path === 'zones' && id === 'new') return <LayoutPage />
+
 
   const known =
     !path ||

@@ -19,14 +19,14 @@ function initialZone(): ZoneParams {
   return loadGuestZone() ?? { ...defaults, start: '' }
 }
 
-export default function LayoutPage() {
+export default function LayoutPage({ standalone = false }: { standalone?: boolean }) {
   const { user } = useAuth()
   const [zone, setZone] = useState<ZoneParams>(initialZone)
   const [error, setError] = useState(readGuestSaveError)
   const [showZoneErrors, setShowZoneErrors] = useState(false)
   const [saving, setSaving] = useState(false)
   const [baseline] = useState(() => JSON.stringify(initialZone()))
-  const allowLeave = useUnsavedGuard(JSON.stringify(zone) !== baseline)
+  const allowLeave = useUnsavedGuard(!standalone && JSON.stringify(zone) !== baseline)
   useEffect(() => {
     saveGuestZone(zone)
   }, [zone])
@@ -58,7 +58,7 @@ export default function LayoutPage() {
   }
   return (
     <div className="app-frame workbench-app-frame">
-      <AppHeader trail={[{ label: '布置图' }]} />
+      <AppHeader />
       <div className="workbench-container">
         <RoadWorkbench
           params={zone}
@@ -66,12 +66,12 @@ export default function LayoutPage() {
             setZone(next)
             setError('')
           }}
-          onSave={() => void save()}
+          onSave={standalone ? undefined : () => void save()}
           saving={saving}
-          saveLabel={user ? '保存布控区域' : '登录后保存'}
-          saveError={error}
+          saveLabel={standalone ? undefined : user ? '保存布控区域' : '登录后保存'}
+          saveError={standalone ? undefined : error}
           showErrors={showZoneErrors}
-          backHref="#/"
+          backHref={standalone ? undefined : '#/zones'}
         />
       </div>
     </div>

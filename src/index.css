@@ -3606,7 +3606,7 @@ th {
     border-radius: 0;
     box-shadow: none;
     z-index: 5;
-    padding: 16px 14px 20px;
+    padding: 20px 16px 28px;
   }
   .panel-sidebar,
   .plan-panel,
@@ -3617,7 +3617,64 @@ th {
   .stage-card canvas {
     touch-action: pan-y;
   }
-
+  .panel-header {
+    margin-bottom: 12px;
+  }
+  .panel-brand {
+    margin-bottom: 18px;
+  }
+  .panel-brand h1 {
+    font-size: 22px;
+    letter-spacing: -0.03em;
+  }
+  .panel-body {
+    gap: 16px;
+    padding-right: 0;
+    margin-right: 0;
+  }
+  .row {
+    gap: 12px;
+  }
+  .field {
+    gap: 6px;
+    font-size: 13px;
+  }
+  .panel-sidebar .field input,
+  .panel-sidebar .field select {
+    height: 44px;
+    border-radius: 12px;
+  }
+  .seg {
+    padding: 3px;
+    border-radius: 12px;
+  }
+  .seg button {
+    min-height: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+  .panel-actions {
+    margin-top: 4px;
+    padding-top: 16px;
+  }
+  .panel-actions .btn-primary {
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .btn-reset {
+    height: 40px;
+    border-radius: 12px;
+  }
+  .plan-export {
+    padding: 16px;
+    gap: 10px;
+  }
+  .plan-export .btn {
+    min-height: 48px;
+    border-radius: 14px;
+  }
   .panel-sidebar .fold-btn,
   .plan-panel .fold-btn,
   .panel-folded .fold-tab {
@@ -3636,6 +3693,7 @@ th {
   .field-grid {
     grid-template-columns: 1fr;
   }
+
 
 
 

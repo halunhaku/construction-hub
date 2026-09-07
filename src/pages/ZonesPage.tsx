@@ -43,7 +43,8 @@ export default function ZonesPage() {
             <p>独立设置与管理作业区布置图，不依赖施工记录，可随时打印或发群确认。</p>
           </div>
           <div className="heading-actions">
-            <a className="btn btn-primary" href="#/layout">
+            <a className="btn btn-primary" href="#/zones/new">
+
               <Plus />
               新建布控
             </a>

@@ -48,7 +48,6 @@ export default function AppHeader({
   /** 用于项目切换器高亮匹配的项目名（默认取 project，详情页会传「项目名 · 路段」） */
   projectKey?: string
 }) {
-
   const { user, setUser } = useAuth()
   const hash = useHash()
   const path = hashPath(hash)
@@ -61,16 +60,14 @@ export default function AppHeader({
 
   const homeActive = !user && path === ''
   const projectActive = Boolean(user) && (path === '' || path === 'project' || path === 'record' || path === 'new') && !hash.includes('/zone')
-  const zonesActive = Boolean(user) && path === 'zones' && !hash.includes('/new') && !hash.includes('/edit')
-  const layoutActive = path === 'layout' || hash.includes('/new')
-  const threeDActive =
-    path === 'layout' ||
-    (path === 'zones' && (hash.includes('/new') || hash.includes('/edit'))) ||
-    (path === 'record' && hash.includes('/zone'))
+  const zonesActive = Boolean(user) && path === 'zones'
+  const layoutActive = path === 'layout'
+  const threeDActive = path === 'layout' || (path === 'record' && hash.includes('/zone'))
   const calendarActive = path === 'calendar'
   const signsActive = path === 'signs'
   const accountActive = path === 'account'
   const loginActive = path === 'login'
+
 
   async function handleLogout() {
     try {
